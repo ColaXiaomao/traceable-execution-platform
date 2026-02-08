@@ -39,7 +39,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://traceable_user:traceable_pass@postgres:5432/traceable_db
+      - DATABASE_URL=postgresql+asyncpg://traceable_user:traceable_pass@postgres:5432/traceable_db
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev-secret-key-please-change-in-production-must-be-at-least-32-characters-long
       - ENVIRONMENT=development
