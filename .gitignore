@@ -29,9 +29,6 @@ env/
 ENV/
 .venv
 
-# Poetry
-poetry.lock
-
 # Environment variables
 .env
 .env.local
@@ -60,5 +57,4 @@ Thumbs.db
 htmlcov/
 
 # Alembic
-backend/app/db/migrations/versions/*.py
-!backend/app/db/migrations/versions/.gitkeep
+backend/app/db/migrations/versions/__pycache__/
