@@ -18,8 +18,8 @@ import backend.app.models  # noqa
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url with our settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Use synchronous DB URL for Alembic migrations
+config.set_main_option("sqlalchemy.url", settings.sync_database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

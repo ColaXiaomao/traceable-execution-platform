@@ -28,6 +28,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str
+    # Database (sync, for migrations)
+    sync_database_url: str
 
     # Redis
     redis_url: str
