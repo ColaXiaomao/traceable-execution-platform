@@ -38,12 +38,13 @@ services:
     container_name: traceable-backend
     ports:
       - "8000:8000"
+
+    # 把根目录 .env 注入容器
+    env_file:
+      - ../.env
+
+    # 可选：只保留“想覆盖 .env 的”变量；否则可以整段删掉
     environment:
-      - DATABASE_URL=postgresql+asyncpg://traceable_user:traceable_pass@postgres:5432/traceable_db
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=dev-secret-key-please-change-in-production-must-be-at-least-32-characters-long
-      - ENVIRONMENT=development
-      - ARTIFACT_STORAGE_TYPE=local
       - ARTIFACT_STORAGE_PATH=/app/data/artifacts
       - AUDIT_LOG_PATH=/app/data/audit
     volumes:
