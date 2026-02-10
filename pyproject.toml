@@ -19,6 +19,7 @@ pydantic = {extras = ["email"], version = "^2.5.3"}
 pydantic-settings = "^2.1.0"
 aiofiles = "^23.2.1"
 asyncpg = "^0.31.0"
+psycopg = {extras = ["binary"], version = "^3.3.2"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
