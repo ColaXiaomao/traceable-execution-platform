@@ -6,12 +6,15 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
 from sqlalchemy import select
 
 from backend.app.core.security import decode_access_token
 from backend.app.db.session import get_db
 from backend.app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 
 # HTTP Bearer token security
@@ -47,9 +50,11 @@ async def get_current_user(
         user_id: int | None = payload.get("sub")
 
         if user_id is None:
+            logger.warning("JWT payload missing 'sub' claim")
             raise credentials_exception
 
-    except JWTError:
+    except JWTError as e:
+        logger.warning("JWT validation failed: %s", e)
         raise credentials_exception
 
     # Query user from database (async)
@@ -57,6 +62,7 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
+        logger.warning("User not found for sub=%s", user_id)
         raise credentials_exception
 
     if not user.is_active:
