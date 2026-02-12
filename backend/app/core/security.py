@@ -68,4 +68,6 @@ def decode_access_token(token: str) -> dict[str, Any]:
         JWTError: If token is invalid or expired
     """
     payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    # 这里会 校验签名，校验算法，校验 token 格式，校验 exp 是否小于当前时间。
+    # 如果 当前时间 > exp，会抛异常 ExpiredSignatureError 。
     return payload
