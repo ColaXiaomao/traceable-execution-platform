@@ -31,6 +31,17 @@ services:
       timeout: 3s
       retries: 5
 
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: traceable-litellm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    environment:
+      - LITELLM_MASTER_KEY=sk-master
+    command: [ "--config", "/app/config.yaml", "--port", "4000" ]
+
   backend:
     build:
       context: ..

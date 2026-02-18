@@ -1,0 +1,14 @@
+model_list:
+  - model_name: local-mistral
+    litellm_params:
+      model: ollama/mistral
+      api_base: http://host.docker.internal:11434
+
+general_settings:
+  # 这个 master_key 可以不写在文件里，只写环境变量也行
+  # 现在 compose 里已经有 LITELLM_MASTER_KEY=sk-master
+  # 所以这里写不写都能用（写了就两边一致）
+  master_key: sk-master
+
+  # 全局并发：最多同时跑 5 个，其它请求会等待/排队（直到有空位）
+  global_max_parallel_requests: 5
