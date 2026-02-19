@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     run_timeout_seconds: int = 300  # 5 minutes default
     max_artifact_size_mb: int = 100
 
+    # LiteLLM Gateway
+    litellm_base_url: str = "http://litellm:4000"
+    litellm_master_key: str = ""
+
 
 # Global settings instance
 settings = Settings()
