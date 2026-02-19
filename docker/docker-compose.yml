@@ -69,6 +69,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      litellm:
+        condition: service_started
+        # TODO: 目前仅保证容器启动顺序，临时使用 service_started 。
+        # 后续应为 litellm 添加 healthcheck，
+        # 并将 condition 改为 service_healthy，
+        # 以避免启动竞态问题（如 backend 启动时 LiteLLM 端口尚未监听）。
 
 volumes:
   postgres_data:
