@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
-from backend.app.api import health, auth, tickets, assets, runs, artifacts
+from backend.app.api import health, auth, tickets, assets, runs, artifacts, chat
 
 
 # Setup logging
@@ -42,6 +42,7 @@ app.include_router(tickets.router, prefix=settings.api_v1_prefix)
 app.include_router(assets.router, prefix=settings.api_v1_prefix)
 app.include_router(runs.router, prefix=settings.api_v1_prefix)
 app.include_router(artifacts.router, prefix=settings.api_v1_prefix)
+app.include_router(chat.router, prefix=settings.api_v1_prefix)
 
 
 @app.on_event("startup")
