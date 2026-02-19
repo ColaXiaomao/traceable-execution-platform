@@ -30,6 +30,11 @@ class User(Base, IDMixin, TimestampMixin):
     # 这行代码不会在数据库里新增任何一列，它只是 ORM 的“使用便利层”。
     # back_populates="creator" ：这里是双向同步的关键。说明Ticket 里有一个属性叫 creator，它和这里的 tickets 是一对。
     runs = relationship("Run", back_populates="executor", foreign_keys="Run.executed_by_id")
+    daily_token_usage = relationship(
+        "UserDailyTokenUsage",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', is_admin={self.is_admin})>"
