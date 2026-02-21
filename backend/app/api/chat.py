@@ -1,33 +1,15 @@
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
 import httpx
 import redis.asyncio as aioredis
 from fastapi import APIRouter, HTTPException, Response
 
 from backend.app.core.config import settings
 from backend.app.core.dependencies import CurrentUser
+from backend.app.schemas.chat import ChatCompletionsRequest
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 RATE_LIMIT = 5
 RATE_WINDOW = 60
-
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
-class ChatCompletionsRequest(BaseModel):
-    model: str
-    messages: List[ChatMessage]
-    # 你后面要支持 stream / temperature 等参数，可以继续加：
-    stream: Optional[bool] = None
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-    # 兜底：允许额外字段（不想严格限制的话）
-    class Config:
-        extra = "allow"
 
 
 @router.post("/completions")
