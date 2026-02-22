@@ -1,9 +1,8 @@
 import httpx
-import redis.asyncio as aioredis
 from fastapi import APIRouter, HTTPException, Response
 
 from backend.app.core.config import settings
-from backend.app.core.dependencies import CurrentUser
+from backend.app.core.dependencies import CurrentUser, RedisClient
 from backend.app.schemas.chat import ChatCompletionsRequest
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -13,21 +12,20 @@ RATE_WINDOW = 60
 
 
 @router.post("/completions")
-async def chat_completions(payload: ChatCompletionsRequest, current_user: CurrentUser):
+async def chat_completions(payload: ChatCompletionsRequest, current_user: CurrentUser, redis: RedisClient):
     # ── 限流 ─────────────────────────────────────────
-    r = aioredis.from_url(settings.redis_url, decode_responses=True)
-    try:
-        rate_key = f"ratelimit:{current_user.id}"
-        count = await r.incr(rate_key)
-        if count == 1:
-            await r.expire(rate_key, RATE_WINDOW)
-        if count > RATE_LIMIT:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Rate limit exceeded: max {RATE_LIMIT} requests per {RATE_WINDOW}s",
-            )
-    finally:
-        await r.aclose()
+    if redis is None:
+        raise HTTPException(status_code=503, detail="Rate limiting unavailable: Redis not configured")
+
+    rate_key = f"ratelimit:{current_user.id}"
+    count = await redis.incr(rate_key)
+    if count == 1:
+        await redis.expire(rate_key, RATE_WINDOW)
+    if count > RATE_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded: max {RATE_LIMIT} requests per {RATE_WINDOW}s",
+        )
 
     # ── 转发给 LiteLLM（注意 /v1） ───────────────────
     async with httpx.AsyncClient(timeout=120.0) as client:
