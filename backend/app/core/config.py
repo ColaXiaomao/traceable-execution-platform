@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     # Database (sync, for migrations)
     sync_database_url: str
 
-    # Redis
-    redis_url: str
+    # Redis (optional; if not set, Redis-dependent features return 503)
+    redis_url: str | None = None
 
     # Security
     secret_key: str
