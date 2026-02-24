@@ -1,0 +1,46 @@
+apiVersion: apps/v1   # 使用 Kubernetes 的 apps/v1 这一套 API（Deployment 属于 apps 组）
+kind: Deployment      # 资源类型：Deployment（用来管理 Pod 的控制器）
+metadata:             # 元数据（给这个资源起名字）
+  name: traceable-backend   # 这个 Deployment 的名字（K8s 里唯一标识）
+spec:                 # 这个资源的“具体规格”
+  replicas: 1         # 要运行几个副本（1 = 只跑一个 backend）
+  selector:           # 选择器（Deployment 用它来管理哪些 Pod）
+    matchLabels:
+      app: traceable-backend  # 只管理带有这个 label 的 Pod
+  template:           # Pod 模板（告诉 K8s：Pod 应该长什么样）
+    metadata:
+      labels:
+        app: traceable-backend  # 给创建出来的 Pod 打上这个标签（必须和 selector 对应）
+    spec:             # 这个是 Pod 的规格
+      containers:     # 这个 Pod 里面有哪些容器（可以有多个）
+        - name: backend  # 容器名字（Pod 里面的名字）
+          image: traceable-backend:dev  # 用哪个 Docker 镜像来启动容器
+          imagePullPolicy: IfNotPresent  # 如果本地有镜像就用，不重新拉
+          ports:
+            - containerPort: 8000  # 容器内部监听的端口（FastAPI 监听 8000）
+          env:                     # 环境变量（传给容器）
+            - name: ENVIRONMENT     # 变量名
+              value: "development"  # 变量值
+            # 让应用先能启动：先连本机 docker-compose 的 postgres（需要还在跑它）
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://postgres:postgres@host.docker.internal:5432/tep"
+            - name: SYNC_DATABASE_URL
+              value: "postgresql+psycopg://postgres:postgres@host.docker.internal:5432/tep"
+            # 任意长度 >= 32 的字符串（生产要换成强随机）
+            - name: SECRET_KEY
+              value: "dev-secret-key-please-change-in-production-min-32-chars"
+
+---
+apiVersion: v1        # Service 属于核心 v1 API
+kind: Service         # 资源类型：Service（用来暴露访问入口）
+metadata:
+  name: traceable-backend   # Service 的名字
+spec:
+  type: NodePort       # 暴露类型（NodePort = 在节点上开一个端口）
+  selector:
+    app: traceable-backend   # 选择所有带这个 label 的 Pod（就是上面那个 backend）
+  ports:
+    - port: 80         # Service 内部端口（集群内部访问用 80）
+      targetPort: 8000 # 实际转发到 Pod 的 8000 端口
+      nodePort: 30080 
+      # Node 把 30080 转发给 Service，Service 再把 80 转发给 Pod 的 8000。
