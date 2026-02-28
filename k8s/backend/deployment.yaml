@@ -1,46 +1,86 @@
-apiVersion: apps/v1   # 使用 Kubernetes 的 apps/v1 这一套 API（Deployment 属于 apps 组）
-kind: Deployment      # 资源类型：Deployment（用来管理 Pod 的控制器）
-metadata:             # 元数据（给这个资源起名字）
-  name: traceable-backend   # 这个 Deployment 的名字（K8s 里唯一标识）
-spec:                 # 这个资源的“具体规格”
-  replicas: 1         # 要运行几个副本（1 = 只跑一个 backend）
-  selector:           # 选择器（Deployment 用它来管理哪些 Pod）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traceable-backend
+  # metadata.name是 这个 Deployment 资源在 Kubernetes 里的名字。
+  # kubectl get deployments可以看到它。
+spec:
+# spec 是 希望这个资源“长成什么样”。
+  replicas: 1
+  # 这个数字1代表着，希望永远有 1 个这样的 Pod 在运行。
+  selector:
     matchLabels:
-      app: traceable-backend  # 只管理带有这个 label 的 Pod
-  template:           # Pod 模板（告诉 K8s：Pod 应该长什么样）
+      app: traceable-backend
+      # 在 Kubernetes 里，每个资源（Pod、Service、Deployment…）都可以带标签。标签本质是，key: value。
+      # 上面这几行的意思是， Deployment 负责管理所有带有 app=traceable-backend 标签的 Pod，其中app和traceable-backend都没有具体含义，只代表标签。
+      # 顺便讲一下 Pod 的名字，Deployment 创建 Pod 时，会自动生成名字，格式是：<deployment-name>-<replicaset-hash>-<随机后缀>。
+  template:
+  # template 相当于 “Pod 的制造蓝图”。
     metadata:
       labels:
-        app: traceable-backend  # 给创建出来的 Pod 打上这个标签（必须和 selector 对应）
-    spec:             # 这个是 Pod 的规格
-      containers:     # 这个 Pod 里面有哪些容器（可以有多个）
-        - name: backend  # 容器名字（Pod 里面的名字）
-          image: traceable-backend:dev  # 用哪个 Docker 镜像来启动容器
-          imagePullPolicy: IfNotPresent  # 如果本地有镜像就用，不重新拉
+        app: traceable-backend
+    spec:
+    # 这里的 spec 是 希望 pod“长成什么样”。
+      containers:
+        - name: backend
+          # 一个 Pod 里有多个容器时，用名字区分。
+          image: traceable-backend:dev
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8000  # 容器内部监听的端口（FastAPI 监听 8000）
-          env:                     # 环境变量（传给容器）
-            - name: ENVIRONMENT     # 变量名
-              value: "development"  # 变量值
-            # 让应用先能启动：先连本机 docker-compose 的 postgres（需要还在跑它）
+            - containerPort: 8000
+              # 声明容器内部监听的端口。
+          env:
+            - name: ENVIRONMENT
+              value: "development"
+
+            # DB：指向 postgres Service（集群内 DNS：<service-name>.<namespace>.svc.cluster.local，同 namespace 可直接用 service 名）
             - name: DATABASE_URL
-              value: "postgresql+asyncpg://postgres:postgres@host.docker.internal:5432/tep"
+              value: "postgresql+asyncpg://traceable_user:traceable_pass@postgres:5432/traceable_db"
             - name: SYNC_DATABASE_URL
-              value: "postgresql+psycopg://postgres:postgres@host.docker.internal:5432/tep"
-            # 任意长度 >= 32 的字符串（生产要换成强随机）
+              value: "postgresql+psycopg://traceable_user:traceable_pass@postgres:5432/traceable_db"
+
+            # Redis：指向 redis Service
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+
+            # LiteLLM：指向 litellm Service
+            - name: LITELLM_BASE_URL
+              value: "http://litellm:4000"
+            - name: LITELLM_MASTER_KEY
+              value: "sk-master"
+
+            # 安全
             - name: SECRET_KEY
               value: "dev-secret-key-please-change-in-production-min-32-chars"
+            - name: ALGORITHM
+              value: "HS256"
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
+              value: "30"
 
----
-apiVersion: v1        # Service 属于核心 v1 API
-kind: Service         # 资源类型：Service（用来暴露访问入口）
-metadata:
-  name: traceable-backend   # Service 的名字
-spec:
-  type: NodePort       # 暴露类型（NodePort = 在节点上开一个端口）
-  selector:
-    app: traceable-backend   # 选择所有带这个 label 的 Pod（就是上面那个 backend）
-  ports:
-    - port: 80         # Service 内部端口（集群内部访问用 80）
-      targetPort: 8000 # 实际转发到 Pod 的 8000 端口
-      nodePort: 30080 
-      # Node 把 30080 转发给 Service，Service 再把 80 转发给 Pod 的 8000。
+            # 存储路径（对应下方 volumeMounts）
+            - name: ARTIFACT_STORAGE_TYPE
+              value: "local"
+            - name: ARTIFACT_STORAGE_PATH
+              value: "/app/data/artifacts"
+            - name: AUDIT_LOG_PATH
+              value: "/app/data/audit"
+
+            # 其他
+            - name: API_V1_PREFIX
+              value: "/api/v1"
+            - name: PROJECT_NAME
+              value: "Traceable Execution Platform"
+
+          volumeMounts:
+            - name: artifact-storage
+              mountPath: /app/data/artifacts
+            - name: audit-storage
+              mountPath: /app/data/audit
+
+      volumes:
+        - name: artifact-storage
+          persistentVolumeClaim:
+            claimName: artifact-pvc   # 对应 pvc.yaml
+        - name: audit-storage
+          persistentVolumeClaim:
+            claimName: audit-pvc      # 对应 pvc.yaml
