@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1                  # DB 不做多副本（需要主从方案才能扩容）
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "traceable_db"
+            - name: POSTGRES_USER
+              value: "traceable_user"
+            - name: POSTGRES_PASSWORD
+              value: "traceable_pass"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data  # postgres 数据目录
+          readinessProbe:                           # 就绪探针：确保 DB 真的可接受连接才标记 Ready
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - traceable_user
+                - -d
+                - traceable_db
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc   # 对应 pvc.yaml 里申请的 PVC

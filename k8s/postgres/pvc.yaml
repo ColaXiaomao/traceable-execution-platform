@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: PersistentVolumeClaim   # PVC：向 K8s 申请一块持久化存储（Pod 删了数据不丢）
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce            # 同一时间只允许一个节点读写（单节点 DB 用这个）
+  resources:
+    requests:
+      storage: 5Gi
