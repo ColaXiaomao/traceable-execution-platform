@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm
+  template:
+    metadata:
+      labels:
+        app: litellm
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-stable
+          ports:
+            - containerPort: 4000
+          env:
+            - name: LITELLM_MASTER_KEY
+              value: "sk-master"
+          args: ["--config", "/app/config.yaml", "--port", "4000"]
+          volumeMounts:
+            - name: litellm-config
+              mountPath: /app/config.yaml
+              subPath: config.yaml    # 只挂 ConfigMap 里 config.yaml 这一个 key，不是整个目录
+      volumes:
+        - name: litellm-config
+          configMap:
+            name: litellm-config     # 对应 configmap.yaml 里的 ConfigMap
