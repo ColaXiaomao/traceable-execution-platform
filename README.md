@@ -59,6 +59,9 @@ traceable-execution-platform/
 │     ├─ test_health.py
 │     ├─ test_auth.py
 │     └─ test_ticket_run_artifact.py
+├─ cluster/
+│  └─ kind/
+│     └─ kind-multi-node.yaml              # Kind 本地集群（1 control-plane + 1 worker）
 ├─ scripts/
 ├─ script_specs/
 └─ run_local.sh
