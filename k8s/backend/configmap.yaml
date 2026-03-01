@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  # ==== Environment ====
+  ENVIRONMENT: "development"
+
+  # ==== Redis ====
+  REDIS_URL: "redis://redis:6379/0"
+
+  # ==== LiteLLM ====
+  LITELLM_BASE_URL: "http://litellm:4000"
+
+  # ==== Security (Non-sensitive) ====
+  ALGORITHM: "HS256"
+  ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+
+  # ==== Storage ====
+  ARTIFACT_STORAGE_TYPE: "local"
+  ARTIFACT_STORAGE_PATH: "/app/data/artifacts"
+  AUDIT_LOG_PATH: "/app/data/audit"
+
+  # ==== Application ====
+  API_V1_PREFIX: "/api/v1"
+  PROJECT_NAME: "Traceable Execution Platform"

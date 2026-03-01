@@ -33,6 +33,9 @@ ENV/
 .env
 .env.local
 
+# Kubernetes secrets（明文密钥，不能提交；参考 secret.yaml.example 创建）
+k8s/**/secret.yaml
+
 # Database
 *.db
 *.sqlite

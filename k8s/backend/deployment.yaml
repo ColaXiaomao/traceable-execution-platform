@@ -5,7 +5,7 @@ metadata:
   # metadata.name是 这个 Deployment 资源在 Kubernetes 里的名字。
   # kubectl get deployments可以看到它。
 spec:
-# spec 是 希望这个资源“长成什么样”。
+# spec 是 希望这个资源"长成什么样"。
   replicas: 1
   # 这个数字1代表着，希望永远有 1 个这样的 Pod 在运行。
   selector:
@@ -15,12 +15,12 @@ spec:
       # 上面这几行的意思是， Deployment 负责管理所有带有 app=traceable-backend 标签的 Pod，其中app和traceable-backend都没有具体含义，只代表标签。
       # 顺便讲一下 Pod 的名字，Deployment 创建 Pod 时，会自动生成名字，格式是：<deployment-name>-<replicaset-hash>-<随机后缀>。
   template:
-  # template 相当于 “Pod 的制造蓝图”。
+  # template 相当于 "Pod 的制造蓝图"。
     metadata:
       labels:
         app: traceable-backend
     spec:
-    # 这里的 spec 是 希望 pod“长成什么样”。
+    # 这里的 spec 是 希望 pod"长成什么样"。
       containers:
         - name: backend
           # 一个 Pod 里有多个容器时，用名字区分。
@@ -29,47 +29,13 @@ spec:
           ports:
             - containerPort: 8000
               # 声明容器内部监听的端口。
-          env:
-            - name: ENVIRONMENT
-              value: "development"
-
-            # DB：指向 postgres Service（集群内 DNS：<service-name>.<namespace>.svc.cluster.local，同 namespace 可直接用 service 名）
-            - name: DATABASE_URL
-              value: "postgresql+asyncpg://traceable_user:traceable_pass@postgres:5432/traceable_db"
-            - name: SYNC_DATABASE_URL
-              value: "postgresql+psycopg://traceable_user:traceable_pass@postgres:5432/traceable_db"
-
-            # Redis：指向 redis Service
-            - name: REDIS_URL
-              value: "redis://redis:6379/0"
-
-            # LiteLLM：指向 litellm Service
-            - name: LITELLM_BASE_URL
-              value: "http://litellm:4000"
-            - name: LITELLM_MASTER_KEY
-              value: "sk-master"
-
-            # 安全
-            - name: SECRET_KEY
-              value: "dev-secret-key-please-change-in-production-min-32-chars"
-            - name: ALGORITHM
-              value: "HS256"
-            - name: ACCESS_TOKEN_EXPIRE_MINUTES
-              value: "30"
-
-            # 存储路径（对应下方 volumeMounts）
-            - name: ARTIFACT_STORAGE_TYPE
-              value: "local"
-            - name: ARTIFACT_STORAGE_PATH
-              value: "/app/data/artifacts"
-            - name: AUDIT_LOG_PATH
-              value: "/app/data/audit"
-
-            # 其他
-            - name: API_V1_PREFIX
-              value: "/api/v1"
-            - name: PROJECT_NAME
-              value: "Traceable Execution Platform"
+          envFrom:
+            # envFrom 会把整个 ConfigMap / Secret 里的所有 key 都注入为环境变量
+            # 比逐条写 env: - name: ... value: ... 简洁很多
+            - configMapRef:
+                name: backend-config   # 对应 configmap.yaml
+            - secretRef:
+                name: backend-secret   # 对应 secret.yaml（敏感变量）
 
           volumeMounts:
             - name: artifact-storage
