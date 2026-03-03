@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+# 【当前】单节点模式（replicas: 1），仅用于验证 backend 通过 S3 API 读写文件的架构是否正确。
+# 【未来】切换到分布式模式时：
+#   1. 将 Deployment 改为 StatefulSet，replicas 设为 4
+#   2. 启动命令改为 minio server http://minio-{0...3}.minio.default.svc.cluster.local/data
+#   3. 每个 Pod 通过 volumeClaimTemplates 自动绑定独立的 PVC
+#   届时 MinIO 会自动做数据分片和冗余（Erasure Coding），任意 2 个节点挂掉仍可正常读写。
+metadata:
+  name: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: quay.io/minio/minio:RELEASE.2025-02-18T16-25-55Z
+          # 固定版本号，避免 latest 更新后行为变化。
+          # 升级时去 https://quay.io/repository/minio/minio?tab=tags 查最新稳定 tag 手动替换。
+          args:
+            - server
+            - /data              # 单节点模式：直接指定本地数据目录
+            - --console-address
+            - ":9001"            # 9001 是 MinIO 自带的 Web 管理界面端口
+          ports:
+            - containerPort: 9000   # S3 API 端口，backend 通过这个端口读写文件
+            - containerPort: 9001   # Web 控制台端口，可以在浏览器里查看 bucket 和文件
+          envFrom:
+            - secretRef:
+                name: minio-secret   # 对应 secret.yaml（MINIO_ROOT_USER / MINIO_ROOT_PASSWORD）
+          resources:
+            requests:
+            # requests的意思是，如果当前节点可用资源低于如下数值，这个 pod 就不会被调度进来。
+              cpu: 100m       # Mac + kind 环境资源有限，保守申请，确保调度器能找到合适节点
+              # m 是 millicpu（毫核），在 Kubernetes 里，1000m = 1 CPU 核心。
+              memory: 256Mi
+              # Mi = Mebibyte（二进制单位），1 Mi = 1024 * 1024 bytes。
+              # 256Mi ≈ 256 MB，512Mi ≈ 512 MB。
+            limits:
+            # limits的意思是，这个容器“最多”能用多少。下面的限制就是，CPU 最多用 0.5 核，内存最多用 512Mi。
+              cpu: 500m       # 防止 MinIO 独占 CPU，影响 backend / postgres 等其他服务
+              memory: 512Mi   # 单节点开发够用；分布式模式下可按实际负载调高
+          volumeMounts:
+            - name: minio-storage
+              mountPath: /data
+          readinessProbe:             # 就绪探针：确保 MinIO 真正启动后再接收流量
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: minio-storage
+          persistentVolumeClaim:
+            claimName: minio-pvc     # 对应 pvc.yaml

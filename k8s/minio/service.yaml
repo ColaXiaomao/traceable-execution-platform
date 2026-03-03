@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio   # 集群内其他 Pod 通过 minio:9000 访问 S3 API
+spec:
+  type: ClusterIP   # 仅集群内部可访问；分布式模式改为 Headless Service（clusterIP: None）供 StatefulSet Pod 互相发现
+  selector:
+    app: minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000   # backend 连接 MinIO 的 S3 API 端口
+    - name: console
+      port: 9001
+      targetPort: 9001   # MinIO Web 控制台端口，可用 kubectl port-forward 在本地访问
