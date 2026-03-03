@@ -6,7 +6,7 @@ metadata:
   # kubectl get deployments可以看到它。
 spec:
 # spec 是 希望这个资源"长成什么样"。
-  replicas: 3
+  replicas: 4
   # 这个数字1代表着，希望永远有 1 个这样的 Pod 在运行。
   selector:
     matchLabels:
@@ -28,10 +28,14 @@ spec:
           topologyKey: kubernetes.io/hostname
           # topologyKey 决定以什么维度来"分散"。
           # kubernetes.io/hostname 表示以节点（机器）为单位来分散 Pod。
-          whenUnsatisfiable: ScheduleAnyway
+          whenUnsatisfiable: DoNotSchedule
           # 当无法满足分散约束时的兜底策略。
           # ScheduleAnyway 表示：即使无法满足约束，也照常调度，不卡住。
           # 另一个选项是 DoNotSchedule，会直接让 Pod 处于 Pending 状态。
+          nodeTaintsPolicy: Honor
+          # 默认情况下，topology spread 会把所有节点（包括有 taint 的 control-plane）都算进分布域，
+          # 导致 control-plane 的 pod 数量为 0，把 skew 的下限拉死，worker 节点一加 pod 就超过 maxSkew。
+          # Honor 表示：只统计 pod 实际能调度进去的节点，有 taint 且 pod 没有对应 toleration 的节点直接忽略。
           labelSelector:
             matchLabels:
               app: traceable-backend
@@ -52,17 +56,3 @@ spec:
                 name: backend-config   # 对应 configmap.yaml
             - secretRef:
                 name: backend-secret   # 对应 secret.yaml（敏感变量）
-
-          volumeMounts:
-            - name: artifact-storage
-              mountPath: /app/data/artifacts
-            - name: audit-storage
-              mountPath: /app/data/audit
-
-      volumes:
-        - name: artifact-storage
-          persistentVolumeClaim:
-            claimName: artifact-pvc   # 对应 pvc.yaml
-        - name: audit-storage
-          persistentVolumeClaim:
-            claimName: audit-pvc      # 对应 pvc.yaml
