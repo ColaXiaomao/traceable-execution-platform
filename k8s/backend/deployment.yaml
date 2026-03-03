@@ -6,7 +6,7 @@ metadata:
   # kubectl get deployments可以看到它。
 spec:
 # spec 是 希望这个资源"长成什么样"。
-  replicas: 1
+  replicas: 3
   # 这个数字1代表着，希望永远有 1 个这样的 Pod 在运行。
   selector:
     matchLabels:
@@ -21,6 +21,22 @@ spec:
         app: traceable-backend
     spec:
     # 这里的 spec 是 希望 pod"长成什么样"。
+      topologySpreadConstraints:
+        - maxSkew: 1
+          # maxSkew 是允许各节点之间 Pod 数量的最大差值。
+          # 设为 1 表示：任意两个节点上的 Pod 数量差不能超过 1。
+          topologyKey: kubernetes.io/hostname
+          # topologyKey 决定以什么维度来"分散"。
+          # kubernetes.io/hostname 表示以节点（机器）为单位来分散 Pod。
+          whenUnsatisfiable: ScheduleAnyway
+          # 当无法满足分散约束时的兜底策略。
+          # ScheduleAnyway 表示：即使无法满足约束，也照常调度，不卡住。
+          # 另一个选项是 DoNotSchedule，会直接让 Pod 处于 Pending 状态。
+          labelSelector:
+            matchLabels:
+              app: traceable-backend
+              # 告诉 Kubernetes 统计哪些 Pod 的分布。
+              # 这里匹配所有带 app=traceable-backend 标签的 Pod，和 selector 保持一致。
       containers:
         - name: backend
           # 一个 Pod 里有多个容器时，用名字区分。
