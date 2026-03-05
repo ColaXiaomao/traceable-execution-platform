@@ -1,6 +1,7 @@
 """Ticket management endpoints."""
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import select
 
 from backend.app.schemas.ticket import TicketCreate, TicketUpdate, TicketResponse, TicketApprove
 from backend.app.core.dependencies import DatabaseSession, CurrentUser, CurrentAdmin
@@ -34,12 +35,13 @@ async def list_tickets(
 
     Admins can see all tickets, employees can only see their own.
     """
-    query = db.query(Ticket)
+    query = select(Ticket)
 
     if not current_user.is_admin:
-        query = query.filter(Ticket.created_by_id == current_user.id)
+        query = query.where(Ticket.created_by_id == current_user.id)
 
-    tickets = query.offset(skip).limit(limit).all()
+    result = await db.execute(query.offset(skip).limit(limit))
+    tickets = result.scalars().all()
     return tickets
 
 
@@ -50,7 +52,8 @@ async def get_ticket(
     current_user: CurrentUser
 ):
     """Get ticket by ID."""
-    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
 
     if not ticket:
         raise HTTPException(
