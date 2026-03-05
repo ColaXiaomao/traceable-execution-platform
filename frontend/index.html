@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Traceable Execution Platform</title>
+  <style>
+    body { font-family: monospace; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.2em; }
+    button { cursor: pointer; padding: 6px 14px; margin: 4px 2px; }
+    input { padding: 6px; width: 100%; box-sizing: border-box; margin: 4px 0; }
+    label { display: block; margin-top: 8px; }
+    #health-result, #login-result { margin-top: 8px; padding: 8px; background: #f4f4f4; white-space: pre; }
+    .error { color: red; }
+    .ok { color: green; }
+    hr { margin: 24px 0; }
+    #login-section { display: none; }
+    #app-section { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Traceable Execution Platform</h1>
+
+  <!-- Health Check -->
+  <section>
+    <button onclick="checkHealth()">Check Health</button>
+    <div id="health-result"></div>
+  </section>
+
+  <hr>
+
+  <!-- Login -->
+  <section id="login-section">
+    <h2 style="font-size:1em;">Login</h2>
+    <label>Username <input id="username" type="text" placeholder="username"></label>
+    <label>Password <input id="password" type="password" placeholder="password"></label>
+    <button onclick="login()">Login</button>
+    <div id="login-result"></div>
+  </section>
+
+  <!-- After login -->
+  <section id="app-section">
+    <p>Logged in as: <strong id="user-info"></strong> <button onclick="logout()">Logout</button></p>
+  </section>
+
+  <script>
+    const API = '/api/v1';
+
+    function showLogin() {
+      document.getElementById('login-section').style.display = 'block';
+      document.getElementById('app-section').style.display = 'none';
+    }
+
+    function showApp(username) {
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('app-section').style.display = 'block';
+      document.getElementById('user-info').textContent = username;
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      showLogin();
+    }
+
+    async function checkHealth() {
+      const el = document.getElementById('health-result');
+      try {
+        const res = await fetch(`${API}/health`);
+        const data = await res.json();
+        el.className = res.ok ? 'ok' : 'error';
+        el.textContent = JSON.stringify(data, null, 2);
+        // Show login section after health check succeeds
+        if (res.ok) showLogin();
+      } catch (e) {
+        el.className = 'error';
+        el.textContent = 'Error: ' + e.message;
+      }
+    }
+
+    async function login() {
+      const el = document.getElementById('login-result');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      if (!username || !password) { el.textContent = 'Please enter username and password.'; return; }
+
+      try {
+        const res = await fetch(`${API}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          el.className = 'error';
+          el.textContent = data.detail || 'Login failed';
+          return;
+        }
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('username', username);
+        el.textContent = '';
+        showApp(username);
+      } catch (e) {
+        el.className = 'error';
+        el.textContent = 'Error: ' + e.message;
+      }
+    }
+
+    // Init
+    const token = localStorage.getItem('token');
+    if (token) {
+      showLogin();
+      showApp(localStorage.getItem('username') || '?');
+    }
+  </script>
+</body>
+</html>
