@@ -1,6 +1,7 @@
 """Asset service for managing devices and resources."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from backend.app.models.asset import Asset
@@ -11,7 +12,7 @@ from backend.app.audit.audit_logger import audit_logger
 
 
 async def create_asset(
-    db: Session,
+    db: AsyncSession,
     asset_in: AssetCreate,
     creator: User
 ) -> Asset:
@@ -28,9 +29,8 @@ async def create_asset(
     """
     # Check if serial number already exists (if provided)
     if asset_in.serial_number:
-        existing = db.query(Asset).filter(
-            Asset.serial_number == asset_in.serial_number
-        ).first()
+        result = await db.execute(select(Asset).where(Asset.serial_number == asset_in.serial_number))
+        existing = result.scalar_one_or_none()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -48,8 +48,8 @@ async def create_asset(
     )
 
     db.add(asset)
-    db.commit()
-    db.refresh(asset)
+    await db.commit()
+    await db.refresh(asset)
 
     # Log asset creation
     await audit_logger.log(AuditEvent(
@@ -69,7 +69,7 @@ async def create_asset(
 
 
 async def update_asset(
-    db: Session,
+    db: AsyncSession,
     asset_id: int,
     asset_in: AssetUpdate,
     user: User
@@ -89,7 +89,8 @@ async def update_asset(
     Raises:
         HTTPException: If asset not found or user not authorized
     """
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
     if not asset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -108,8 +109,8 @@ async def update_asset(
     for field, value in update_data.items():
         setattr(asset, field, value)
 
-    db.commit()
-    db.refresh(asset)
+    await db.commit()
+    await db.refresh(asset)
 
     # Log update
     await audit_logger.log(AuditEvent(
