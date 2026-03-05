@@ -4,56 +4,87 @@
   <meta charset="UTF-8">
   <title>Traceable Execution Platform</title>
   <style>
-    body { font-family: monospace; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+    body { font-family: monospace; max-width: 640px; margin: 40px auto; padding: 0 20px; }
     h1 { font-size: 1.2em; }
+    h2 { font-size: 1em; margin: 0 0 8px; }
     button { cursor: pointer; padding: 6px 14px; margin: 4px 2px; }
-    input { padding: 6px; width: 100%; box-sizing: border-box; margin: 4px 0; }
-    label { display: block; margin-top: 8px; }
-    #health-result, #login-result { margin-top: 8px; padding: 8px; background: #f4f4f4; white-space: pre; }
+    input, textarea { padding: 6px; width: 100%; box-sizing: border-box; margin: 4px 0; font-family: monospace; }
+    textarea { height: 60px; resize: vertical; }
+    label { display: block; margin-top: 8px; font-size: 0.9em; }
+    .result { margin-top: 8px; padding: 8px; background: #f4f4f4; white-space: pre-wrap; font-size: 0.85em; }
     .error { color: red; }
     .ok { color: green; }
     hr { margin: 24px 0; }
-    #login-section { display: none; }
     #app-section { display: none; }
+    #login-section { display: none; }
   </style>
 </head>
 <body>
   <h1>Traceable Execution Platform</h1>
 
-  <!-- Health Check -->
+  <!-- Health Check (always visible) -->
   <section>
     <button onclick="checkHealth()">Check Health</button>
-    <div id="health-result"></div>
+    <div id="health-result" class="result" style="display:none"></div>
   </section>
 
   <hr>
 
   <!-- Login -->
   <section id="login-section">
-    <h2 style="font-size:1em;">Login</h2>
+    <h2>Login</h2>
     <label>Username <input id="username" type="text" placeholder="username"></label>
     <label>Password <input id="password" type="password" placeholder="password"></label>
     <button onclick="login()">Login</button>
-    <div id="login-result"></div>
+    <div id="login-result" class="result" style="display:none"></div>
   </section>
 
-  <!-- After login -->
+  <!-- App (after login) -->
   <section id="app-section">
     <p>Logged in as: <strong id="user-info"></strong> <button onclick="logout()">Logout</button></p>
+
+    <hr>
+
+    <!-- Create Ticket -->
+    <h2>Create Ticket</h2>
+    <label>Title *<input id="ticket-title" type="text" placeholder="ticket title"></label>
+    <label>Description<textarea id="ticket-desc" placeholder="(optional)"></textarea></label>
+    <label>Asset ID<input id="ticket-asset-id" type="number" placeholder="(optional)"></label>
+    <button onclick="createTicket()">Submit Ticket</button>
+    <div id="ticket-result" class="result" style="display:none"></div>
+
+    <hr>
+
+    <!-- List Tickets -->
+    <button onclick="listTickets()">List My Tickets</button>
+    <div id="tickets-list" class="result" style="display:none"></div>
   </section>
 
   <script>
     const API = '/api/v1';
 
-    function showLogin() {
-      document.getElementById('login-section').style.display = 'block';
-      document.getElementById('app-section').style.display = 'none';
+    function getToken() { return localStorage.getItem('token'); }
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() };
+    }
+
+    function showResult(id, text, isError) {
+      const el = document.getElementById(id);
+      el.style.display = 'block';
+      el.className = 'result ' + (isError ? 'error' : 'ok');
+      el.textContent = text;
     }
 
     function showApp(username) {
       document.getElementById('login-section').style.display = 'none';
       document.getElementById('app-section').style.display = 'block';
       document.getElementById('user-info').textContent = username;
+    }
+
+    function showLogin() {
+      document.getElementById('login-section').style.display = 'block';
+      document.getElementById('app-section').style.display = 'none';
     }
 
     function logout() {
@@ -64,25 +95,25 @@
 
     async function checkHealth() {
       const el = document.getElementById('health-result');
+      el.style.display = 'block';
+      el.textContent = 'Checking...';
+      el.className = 'result';
       try {
         const res = await fetch(`${API}/health`);
         const data = await res.json();
-        el.className = res.ok ? 'ok' : 'error';
-        el.textContent = JSON.stringify(data, null, 2);
-        // Show login section after health check succeeds
-        if (res.ok) showLogin();
+        showResult('health-result', JSON.stringify(data, null, 2), !res.ok);
       } catch (e) {
-        el.className = 'error';
-        el.textContent = 'Error: ' + e.message;
+        showResult('health-result', 'Error: ' + e.message, true);
       }
     }
 
     async function login() {
-      const el = document.getElementById('login-result');
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
-      if (!username || !password) { el.textContent = 'Please enter username and password.'; return; }
-
+      if (!username || !password) {
+        showResult('login-result', 'Please enter username and password.', true);
+        return;
+      }
       try {
         const res = await fetch(`${API}/auth/login`, {
           method: 'POST',
@@ -90,27 +121,61 @@
           body: JSON.stringify({ username, password })
         });
         const data = await res.json();
-        if (!res.ok) {
-          el.className = 'error';
-          el.textContent = data.detail || 'Login failed';
-          return;
-        }
+        if (!res.ok) { showResult('login-result', data.detail || 'Login failed', true); return; }
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('username', username);
-        el.textContent = '';
         showApp(username);
       } catch (e) {
-        el.className = 'error';
-        el.textContent = 'Error: ' + e.message;
+        showResult('login-result', 'Error: ' + e.message, true);
       }
     }
 
-    // Init
-    const token = localStorage.getItem('token');
-    if (token) {
-      showLogin();
-      showApp(localStorage.getItem('username') || '?');
+    async function createTicket() {
+      const title = document.getElementById('ticket-title').value.trim();
+      if (!title) { showResult('ticket-result', 'Title is required.', true); return; }
+      const description = document.getElementById('ticket-desc').value.trim() || null;
+      const assetIdVal = document.getElementById('ticket-asset-id').value.trim();
+      const asset_id = assetIdVal ? parseInt(assetIdVal) : null;
+
+      try {
+        const res = await fetch(`${API}/tickets`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ title, description, asset_id })
+        });
+        const data = await res.json();
+        if (!res.ok) { showResult('ticket-result', data.detail || 'Failed', true); return; }
+        showResult('ticket-result', 'Created! ' + JSON.stringify(data, null, 2), false);
+        document.getElementById('ticket-title').value = '';
+        document.getElementById('ticket-desc').value = '';
+        document.getElementById('ticket-asset-id').value = '';
+      } catch (e) {
+        showResult('ticket-result', 'Error: ' + e.message, true);
+      }
     }
+
+    async function listTickets() {
+      try {
+        const res = await fetch(`${API}/tickets`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) { showResult('tickets-list', data.detail || 'Failed', true); return; }
+        if (data.length === 0) { showResult('tickets-list', '(no tickets)', false); return; }
+        const text = data.map(t => `[${t.id}] ${t.title} — ${t.status}`).join('\n');
+        showResult('tickets-list', text, false);
+      } catch (e) {
+        showResult('tickets-list', 'Error: ' + e.message, true);
+      }
+    }
+
+    // Init: restore session if token exists
+    (function init() {
+      const token = getToken();
+      if (token) {
+        showApp(localStorage.getItem('username') || '?');
+      } else {
+        showLogin();
+      }
+    })();
   </script>
 </body>
 </html>
