@@ -16,6 +16,8 @@ import {
 import { useMultiTagsStoreHook } from "./multiTags";
 import { type DataInfo, setToken, removeToken, userKey } from "@/utils/auth";
 
+import type { LoginResult } from "@/api/user";
+
 export const useUserStore = defineStore("pure-user", {
   state: (): userType => ({
     // 头像
@@ -65,7 +67,7 @@ export const useUserStore = defineStore("pure-user", {
     },
     /** 登入 */
     async loginByUsername(data) {
-      return new Promise<UserResult>((resolve, reject) => {
+      return new Promise<LoginResult>((resolve, reject) => {
         getLogin(data)
           .then(res => {
             const token = (res as any).access_token;

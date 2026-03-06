@@ -22,6 +22,12 @@ export type UserResult = {
   };
 };
 
+/** 新增一个LoginResult */
+export type LoginResult = {
+  access_token: string;
+  token_type: string;
+};
+
 export type RefreshTokenResult = {
   success: boolean;
   data: {
@@ -36,7 +42,7 @@ export type RefreshTokenResult = {
 
 /** 登录 */
 export const getLogin = (data: any) => {
-  return http.request<UserResult>("post", "/api/v1/auth/login", {
+  return http.request<LoginResult>("post", "/api/v1/auth/login", {
     data: {
       username: data.username,
       password: data.password
@@ -47,4 +53,8 @@ export const getLogin = (data: any) => {
 /** 刷新`token` */
 export const refreshTokenApi = (data?: object) => {
   return http.request<RefreshTokenResult>("post", "/refresh-token", { data });
+};
+
+export const getUserInfo = () => {
+  return http.request<UserResult>("get", "/api/v1/auth/me");
 };

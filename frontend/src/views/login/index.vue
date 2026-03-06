@@ -20,6 +20,8 @@ import darkIcon from "@/assets/svg/dark.svg?component";
 import Lock from "~icons/ri/lock-fill";
 import User from "~icons/ri/user-3-fill";
 
+import { getUserInfo } from "@/api/user";
+
 defineOptions({
   name: "Login"
 });
@@ -52,8 +54,9 @@ const onLogin = async (formEl: FormInstance | undefined) => {
           password: ruleForm.password
         })
         .then(res => {
-          if (res.success) {
+          if (res.access_token) {
             // 获取后端路由
+            return getUserInfo().then(() => {
             return initRouter().then(() => {
               disabled.value = true;
               router
@@ -63,6 +66,7 @@ const onLogin = async (formEl: FormInstance | undefined) => {
                 })
                 .finally(() => (disabled.value = false));
             });
+             });
           } else {
             message("登录失败", { type: "error" });
           }
