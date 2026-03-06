@@ -90,6 +90,7 @@ services:
         # 以避免启动竞态问题（如 backend 启动时 LiteLLM 端口尚未监听）。
 
 volumes:
+# 这些volumes在文件的底部，声明这几个是持久化储存，也就是named volume，告诉 Docker "请创建这些卷"。
   postgres_data:
   redis_data:
   artifact_data:
