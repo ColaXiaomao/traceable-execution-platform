@@ -67,9 +67,18 @@ export const useUserStore = defineStore("pure-user", {
     async loginByUsername(data) {
       return new Promise<UserResult>((resolve, reject) => {
         getLogin(data)
-          .then(data => {
-            if (data?.success) setToken(data.data);
-            resolve(data);
+          .then(res => {
+            const token = (res as any).access_token;
+
+            if (token) {
+              setToken({
+                accessToken: token,
+                expires: new Date().getTime() + 86400000,
+                refreshToken: ""
+              } as any);
+            }
+
+            resolve(res);
           })
           .catch(error => {
             reject(error);
