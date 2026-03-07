@@ -4,12 +4,15 @@ Artifact storage abstraction layer.
 Supports multiple backends: local filesystem, MinIO, S3.
 """
 
+import asyncio
 import hashlib
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import BinaryIO
 
 import aiofiles
+import boto3
+from botocore.exceptions import ClientError
 
 from backend.app.core.config import settings
 
@@ -172,7 +175,77 @@ class LocalArtifactStore(ArtifactStore):
         return full_path.exists()
 
 
-# Future: MinIOArtifactStore, S3ArtifactStore implementations
+class MinIOArtifactStore(ArtifactStore):
+    """MinIO（S3 兼容）存储后端。"""
+
+    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str, use_ssl: bool = False):
+        self.bucket = bucket
+        # boto3 是同步库，所有操作用 asyncio.to_thread 包一层，避免阻塞事件循环。
+        self._client = boto3.client(
+            "s3",
+            endpoint_url=f"{'https' if use_ssl else 'http'}://{endpoint}",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name="us-east-1",  # MinIO 不校验 region，随便填一个即可
+        )
+        self._ensure_bucket()
+
+    def _ensure_bucket(self) -> None:
+        """bucket 不存在时自动创建。"""
+        try:
+            self._client.head_bucket(Bucket=self.bucket)
+        except ClientError:
+            self._client.create_bucket(Bucket=self.bucket)
+
+    async def save(self, file: BinaryIO, storage_path: str) -> tuple[str, int, str]:
+        """把文件上传到 MinIO，同时计算 sha256 和文件大小。"""
+        data = file.read()
+        size = len(data)
+        sha256_hash = hashlib.sha256(data).hexdigest()
+
+        await asyncio.to_thread(
+            self._client.put_object,
+            Bucket=self.bucket,
+            Key=storage_path,
+            Body=data,
+        )
+        return (storage_path, size, sha256_hash)
+
+    async def read(self, storage_path: str) -> bytes:
+        """从 MinIO 下载文件内容。"""
+        try:
+            response = await asyncio.to_thread(
+                self._client.get_object,
+                Bucket=self.bucket,
+                Key=storage_path,
+            )
+            return response["Body"].read()
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                raise FileNotFoundError(f"Artifact not found: {storage_path}")
+            raise
+
+    async def delete(self, storage_path: str) -> bool:
+        """删除 MinIO 中的文件。"""
+        await asyncio.to_thread(
+            self._client.delete_object,
+            Bucket=self.bucket,
+            Key=storage_path,
+        )
+        return True
+
+    async def exists(self, storage_path: str) -> bool:
+        """检查文件是否存在于 MinIO。"""
+        try:
+            await asyncio.to_thread(
+                self._client.head_object,
+                Bucket=self.bucket,
+                Key=storage_path,
+            )
+            return True
+        except ClientError:
+            return False
+
 
 def get_artifact_store() -> ArtifactStore:
     """
@@ -185,12 +258,16 @@ def get_artifact_store() -> ArtifactStore:
 
     if storage_type == "local":
         return LocalArtifactStore(settings.artifact_storage_path)
-    elif storage_type == "minio":
-        # TODO: Implement MinIOArtifactStore
-        raise NotImplementedError("MinIO storage not yet implemented")
-    elif storage_type == "s3":
-        # TODO: Implement S3ArtifactStore
-        raise NotImplementedError("S3 storage not yet implemented")
+    elif storage_type in ("minio", "s3"):
+        if not all([settings.minio_endpoint, settings.minio_access_key, settings.minio_secret_key]):
+            raise ValueError("minio_endpoint, minio_access_key, minio_secret_key 必须配置")
+        return MinIOArtifactStore(
+            endpoint=settings.minio_endpoint,
+            access_key=settings.minio_access_key,
+            secret_key=settings.minio_secret_key,
+            bucket=settings.minio_bucket_artifacts,
+            use_ssl=settings.minio_use_ssl,
+        )
     else:
         raise ValueError(f"Unknown storage type: {storage_type}")
 
