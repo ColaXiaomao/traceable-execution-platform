@@ -7,7 +7,7 @@ from backend.app.schemas.artifact import ArtifactResponse, ArtifactUploadRespons
 from backend.app.core.dependencies import DatabaseSession, CurrentUser
 from backend.app.services.artifact_service import upload_artifact, download_artifact
 from backend.app.models.artifact import Artifact
-from backend.app.models.run import Run
+from backend.app.models.ticket import Ticket
 
 
 router = APIRouter(prefix="/artifacts", tags=["Artifacts"])
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/artifacts", tags=["Artifacts"])
 
 @router.post("", response_model=ArtifactUploadResponse)
 async def upload_artifact_endpoint(
-    run_id: int,
+    ticket_id: int,
     file: UploadFile = File(...),
     artifact_type: str | None = None,
     description: str | None = None,
@@ -23,28 +23,30 @@ async def upload_artifact_endpoint(
     current_user: CurrentUser = None
 ):
     """
-    Upload an artifact for a run.
+    Upload an artifact for a ticket.
 
     Args:
-        run_id: Associated run ID
+        ticket_id: Associated ticket ID
         file: File to upload
         artifact_type: Optional artifact classification
         description: Optional description
     """
-    # Verify run exists and user has permission
-    run = db.query(Run).filter(Run.id == run_id).first()
-    if not run:
+    # Verify ticket exists and user has permission
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Run not found"
+            detail="Ticket not found"
         )
 
     # Check permissions
     if not current_user.is_admin:
-        if run.ticket.created_by_id != current_user.id:
+        if ticket.created_by_id != current_user.id:
+        # 当前用户如果不是管理员 ，
+        # 而且 如果这个工单不是由当前已登录的用户创建的话，报错。
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to upload artifacts for this run"
+                detail="Not authorized to upload artifacts for this ticket"
             )
 
     # Upload artifact
@@ -52,7 +54,7 @@ async def upload_artifact_endpoint(
         db=db,
         file=file.file,
         filename=file.filename,
-        run_id=run_id,
+        ticket_id=ticket_id,
         uploader=current_user,
         content_type=file.content_type,
         artifact_type=artifact_type,
@@ -79,7 +81,7 @@ async def get_artifact_metadata(
 
     # Check permissions
     if not current_user.is_admin:
-        if artifact.run.ticket.created_by_id != current_user.id:
+        if artifact.ticket.created_by_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this artifact"
@@ -106,31 +108,31 @@ async def download_artifact_endpoint(
     )
 
 
-@router.get("/run/{run_id}", response_model=list[ArtifactResponse])
-async def list_run_artifacts(
-    run_id: int,
+@router.get("/ticket/{ticket_id}", response_model=list[ArtifactResponse])
+async def list_ticket_artifacts(
+    ticket_id: int,
     db: DatabaseSession,
     current_user: CurrentUser
 ):
-    """List all artifacts for a run."""
-    # Verify run exists
-    run = db.query(Run).filter(Run.id == run_id).first()
-    if not run:
+    """List all artifacts for a ticket."""
+    # Verify ticket exists
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Run not found"
+            detail="Ticket not found"
         )
 
     # Check permissions
     if not current_user.is_admin:
-        if run.ticket.created_by_id != current_user.id:
+        if ticket.created_by_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view artifacts for this run"
+                detail="Not authorized to view artifacts for this ticket"
             )
 
     artifacts = db.query(Artifact).filter(
-        Artifact.run_id == run_id,
+        Artifact.ticket_id == ticket_id,
         Artifact.is_deleted == False
     ).all()
 

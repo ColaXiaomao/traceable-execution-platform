@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from backend.app.models.artifact import Artifact
-from backend.app.models.run import Run
+from backend.app.models.ticket import Ticket
 from backend.app.models.user import User
 from backend.app.storage.artifact_store import artifact_store
 from backend.app.audit.events import AuditEvent, AuditEventType
@@ -17,7 +17,7 @@ async def upload_artifact(
     db: Session,
     file: BinaryIO,
     filename: str,
-    run_id: int,
+    ticket_id: int,
     uploader: User,
     content_type: str | None = None,
     artifact_type: str | None = None,
@@ -30,10 +30,10 @@ async def upload_artifact(
         db: Database session
         file: File to upload
         filename: Original filename
-        run_id: Associated run ID
+        ticket_id: Associated ticket ID
         uploader: User uploading the artifact
         content_type: MIME type
-        artifact_type: Classification (e.g., "config", "log")
+        artifact_type: Classification (e.g., "config", "log", "screenshot")
         description: Optional description
 
     Returns:
@@ -42,12 +42,12 @@ async def upload_artifact(
     Raises:
         HTTPException: If validation fails
     """
-    # Verify run exists
-    run = db.query(Run).filter(Run.id == run_id).first()
-    if not run:
+    # Verify ticket exists
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Run not found"
+            detail="Ticket not found"
         )
 
     # Check file size limit
@@ -69,8 +69,8 @@ async def upload_artifact(
             detail=f"File size exceeds maximum allowed size of {settings.max_artifact_size_mb}MB"
         )
 
-    # Generate storage path: runs/<run_id>/<filename>
-    storage_path = f"runs/{run_id}/{filename}"
+    # Generate storage path: tickets/<ticket_id>/<filename>
+    storage_path = f"tickets/{ticket_id}/{filename}"
 
     # Save file and get hash
     storage_path, size_bytes, sha256_hash = await artifact_store.save(file, storage_path)
@@ -84,7 +84,7 @@ async def upload_artifact(
         storage_path=storage_path,
         artifact_type=artifact_type,
         description=description,
-        run_id=run_id,
+        ticket_id=ticket_id,
         uploaded_by_id=uploader.id
     )
 
@@ -101,7 +101,7 @@ async def upload_artifact(
         resource_id=artifact.id,
         action=f"Uploaded artifact: {filename}",
         details={
-            "run_id": run_id,
+            "ticket_id": ticket_id,
             "filename": filename,
             "size_bytes": size_bytes,
             "sha256_hash": sha256_hash,
@@ -157,7 +157,7 @@ async def download_artifact(
         resource_id=artifact.id,
         action=f"Downloaded artifact: {artifact.filename}",
         details={
-            "run_id": artifact.run_id,
+            "ticket_id": artifact.ticket_id,
             "filename": artifact.filename
         }
     ))

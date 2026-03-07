@@ -69,6 +69,7 @@ class Ticket(Base, IDMixin, TimestampMixin):
     # 上面的ForeignKey是：数据库层，保证数据正确。这里的relationship是：Python 层。
     approver = relationship("User", foreign_keys=[approved_by_id])
     runs = relationship("Run", back_populates="ticket", cascade="all, delete-orphan")
+    artifacts = relationship("Artifact", back_populates="ticket", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Ticket(id={self.id}, title='{self.title}', status={self.status.value})>"

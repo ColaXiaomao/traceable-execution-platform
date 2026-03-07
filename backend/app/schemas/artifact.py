@@ -13,7 +13,8 @@ class ArtifactBase(BaseModel):
 
 class ArtifactCreate(ArtifactBase):
     """Schema for creating artifact metadata (file upload handled separately)."""
-    run_id: int
+    ticket_id: int
+    run_id: int | None = None
 
 
 class ArtifactResponse(ArtifactBase):
@@ -22,7 +23,8 @@ class ArtifactResponse(ArtifactBase):
     content_type: str | None = None
     size_bytes: int
     sha256_hash: str
-    run_id: int
+    ticket_id: int
+    run_id: int | None = None
     uploaded_by_id: int
     is_deleted: bool
     created_at: datetime
