@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: traceable-backend
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # rewrite-target 把匹配到的路径原样转发给后端，不做路径裁剪。
+spec:
+  ingressClassName: nginx
+  # 告诉 K8s 用哪个 Ingress Controller 来处理这条规则，对应 nginx ingress controller。
+  rules:
+    - host: localhost
+      # 本地开发用 localhost，生产环境换成真实域名（如 api.example.com）。
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            # Prefix 表示匹配所有以 / 开头的路径，即所有请求都转发给 backend。
+            backend:
+              service:
+                name: traceable-backend   # 对应 k8s/backend/service.yaml
+                port:
+                  number: 80
