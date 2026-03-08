@@ -102,11 +102,13 @@ async def download_artifact_endpoint(
     """Download artifact file."""
     file_content, artifact = await download_artifact(db, artifact_id, current_user)
 
+    from urllib.parse import quote
+    encoded_filename = quote(artifact.filename, encoding="utf-8")
     return Response(
         content=file_content,
         media_type=artifact.content_type or "application/octet-stream",
         headers={
-            "Content-Disposition": f'attachment; filename="{artifact.filename}"'
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
         }
     )
 
