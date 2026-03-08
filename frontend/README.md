@@ -1,43 +1,31 @@
-<h1>vue-pure-admin精简版（非国际化版本）</h1>
-
-[![license](https://img.shields.io/github/license/pure-admin/vue-pure-admin.svg)](LICENSE)
-
-**中文** | [English](./README.en-US.md)
-
-## 介绍
-
-精简版是基于 [vue-pure-admin](https://github.com/pure-admin/vue-pure-admin) 提炼出的架子，包含主体功能，更适合实际项目开发，打包后的大小在全局引入 [element-plus](https://element-plus.org) 的情况下仍然低于 `2.3MB`，并且会永久同步完整版的代码。开启 `brotli` 压缩和 `cdn` 替换本地库模式后，打包大小低于 `350kb`
-
-## 版本选择
-
-当前是非国际化版本，如果您需要国际化版本 [请点击](https://github.com/pure-admin/pure-admin-thin/tree/i18n)
-
-## 配套视频
-
-[点我查看 UI 设计](https://www.bilibili.com/video/BV17g411T7rq)  
-[点我查看快速开发教程](https://www.bilibili.com/video/BV1kg411v7QT)
-
-## 配套保姆级文档
-
-[点我查看 vue-pure-admin 文档](https://pure-admin.cn/)  
-[点我查看 @pureadmin/utils 文档](https://pure-admin-utils.netlify.app)
-
-## 高级服务
-
-[点我查看详情](https://pure-admin.cn/pages/service/)
-
-## 预览
-
-[查看预览](https://pure-admin-thin.netlify.app/#/login)
-
-## 维护者
-
-[xiaoxian521](https://github.com/xiaoxian521)
-
-## ⚠️ 注意
-
-精简版不接受任何 `issues` 和 `pr`，如果有问题请到完整版 [issues](https://github.com/pure-admin/vue-pure-admin/issues/new/choose) 去提，谢谢！
-
-## 许可证
-
-[MIT © 2020-present, pure-admin](./LICENSE)
+frontend
+├───.husky                    # Git hooks（提交代码前执行脚本，如eslint检查）
+├───.vscode                   # VSCode 项目配置
+├───build                     # 项目构建脚本（vite打包相关）
+├───mock                      # mock接口数据（前端假数据）
+├───node_modules              # npm依赖包
+├───public                    # 静态资源（不会被vite处理）
+├───src                       # 前端核心源码
+│   ├───api                   # 后端接口请求（axios封装的API）
+│   ├───assets                # 图片、字体、svg等资源
+│   ├───components            # 可复用组件
+│   ├───config                # 项目配置文件
+│   ├───directives            # Vue自定义指令（如v-permission）
+│   ├───layout                # 后台整体布局（侧边栏、顶部栏、主体）
+│   ├───plugins               # 插件注册（element-plus、pinia等）
+│   ├───router                # 路由系统
+│   │   ├───modules           # 模块化路由（按功能拆分路由）
+│   │   ├───index.ts          # 创建Vue Router实例
+│   │   └───utils.ts          # 路由工具函数（如动态路由处理）
+│   ├───store                 # Pinia状态管理（用户信息、token等）
+│   ├───style                 # 全局样式（scss、主题）
+│   ├───utils                 # 工具函数（request、storage等）
+│   ├───views                 # 页面组件
+│   │   ├───error             # 错误页面（404/403/500）
+│   │   ├───login             # 登录页面
+│   │   ├───permission        # 权限相关页面
+│   │   ├───tickets           # 工单系统页面
+│   │   └───welcome           # 后台首页
+│   ├───App.vue               # Vue根组件
+│   └───main.ts               # Vue应用入口（createApp）
+├───types                     # TypeScript类型定义
