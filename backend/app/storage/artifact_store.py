@@ -184,9 +184,10 @@ class MinIOArtifactStore(ArtifactStore):
         self._client = boto3.client(
             "s3",
             endpoint_url=f"{'https' if use_ssl else 'http'}://{endpoint}",
+            # 因为上面写了要连接的是S3服务，所以如果不写endpoint_url，boto3 默认会去找 AWS S3。
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            region_name="us-east-1",  # MinIO 不校验 region，随便填一个即可
+            region_name="us-east-1",  # 在 AWS 里，region 表示区域，但是MinIO 不校验 region，随便填一个即可。
         )
         self._ensure_bucket()
 
@@ -207,6 +208,8 @@ class MinIOArtifactStore(ArtifactStore):
             self._client.put_object,
             Bucket=self.bucket,
             Key=storage_path,
+            # 这里的 Key=storage_path 的意思是，这个文件在 bucket 里的路径名，
+            # 比如storage_path = "tickets/123/error.log"。这个路径在artifact_service.py的upload_artifact这个函数里有提到。
             Body=data,
         )
         return (storage_path, size, sha256_hash)
