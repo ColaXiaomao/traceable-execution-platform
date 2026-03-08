@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, status, UploadFile, File
 from fastapi.responses import Response
+from sqlalchemy import select
 
 from backend.app.schemas.artifact import ArtifactResponse, ArtifactUploadResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser
@@ -32,7 +33,8 @@ async def upload_artifact_endpoint(
         description: Optional description
     """
     # Verify ticket exists and user has permission
-    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -71,7 +73,8 @@ async def get_artifact_metadata(
     current_user: CurrentUser
 ):
     """Get artifact metadata."""
-    artifact = db.query(Artifact).filter(Artifact.id == artifact_id).first()
+    result = await db.execute(select(Artifact).where(Artifact.id == artifact_id))
+    artifact = result.scalar_one_or_none()
 
     if not artifact:
         raise HTTPException(
@@ -116,7 +119,8 @@ async def list_ticket_artifacts(
 ):
     """List all artifacts for a ticket."""
     # Verify ticket exists
-    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -131,9 +135,12 @@ async def list_ticket_artifacts(
                 detail="Not authorized to view artifacts for this ticket"
             )
 
-    artifacts = db.query(Artifact).filter(
-        Artifact.ticket_id == ticket_id,
-        Artifact.is_deleted == False
-    ).all()
+    result = await db.execute(
+        select(Artifact).where(
+            Artifact.ticket_id == ticket_id,
+            Artifact.is_deleted == False
+        )
+    )
+    artifacts = result.scalars().all()
 
     return artifacts

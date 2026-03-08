@@ -1,7 +1,8 @@
 """Artifact service for managing evidence files."""
 
 from typing import BinaryIO
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from fastapi import HTTPException, status
 
 from backend.app.models.artifact import Artifact
@@ -14,7 +15,7 @@ from backend.app.core.config import settings
 
 
 async def upload_artifact(
-    db: Session,
+    db: AsyncSession,
     file: BinaryIO,
     filename: str,
     ticket_id: int,
@@ -43,7 +44,8 @@ async def upload_artifact(
         HTTPException: If validation fails
     """
     # Verify ticket exists
-    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -89,8 +91,8 @@ async def upload_artifact(
     )
 
     db.add(artifact)
-    db.commit()
-    db.refresh(artifact)
+    await db.commit()
+    await db.refresh(artifact)
 
     # Log artifact upload
     await audit_logger.log(AuditEvent(
@@ -113,7 +115,7 @@ async def upload_artifact(
 
 
 async def download_artifact(
-    db: Session,
+    db: AsyncSession,
     artifact_id: int,
     user: User
 ) -> tuple[bytes, Artifact]:
@@ -132,7 +134,8 @@ async def download_artifact(
         HTTPException: If artifact not found or deleted
     """
     # Get artifact metadata
-    artifact = db.query(Artifact).filter(Artifact.id == artifact_id).first()
+    result = await db.execute(select(Artifact).where(Artifact.id == artifact_id))
+    artifact = result.scalar_one_or_none()
     if not artifact:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -166,7 +169,7 @@ async def download_artifact(
 
 
 async def verify_artifact(
-    db: Session,
+    db: AsyncSession,
     artifact_id: int
 ) -> bool:
     """
@@ -182,7 +185,8 @@ async def verify_artifact(
     Raises:
         HTTPException: If artifact not found
     """
-    artifact = db.query(Artifact).filter(Artifact.id == artifact_id).first()
+    result = await db.execute(select(Artifact).where(Artifact.id == artifact_id))
+    artifact = result.scalar_one_or_none()
     if not artifact:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
