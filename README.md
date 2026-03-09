@@ -1,68 +1,103 @@
-```angular2html
-traceable-execution-platform/
-├─ README.md
-├─ pyproject.toml
-├─ docker/
-│  ├─ Dockerfile
-│  └─ docker-compose.yml                 # postgres + redis + backend（可选再加 minio）
-├─ backend/
-│  ├─ app/
-│  │  ├─ main.py                         # FastAPI app 入口
-│  │  ├─ core/
-│  │  │  ├─ config.py                    # Settings（环境变量）
-│  │  │  ├─ logging.py                   # Logging（日志）
-│  │  │  ├─ security.py                  # Security（密码哈希/JWT配置）
-│  │  │  └─ dependencies.py              # Dependencies（依赖注入：current_user等）
-│  │  ├─ db/
-│  │  │  ├─ session.py                   # DB Session（SQLAlchemy会话）
-│  │  │  ├─ base.py                      # Base model（Declarative Base）
-│  │  │  └─ migrations/                  # Alembic migrations（迁移）
-│  │  ├─ models/                         # ORM Models（表结构）
-│  │  │  ├─ user.py                      # User
-│  │  │  ├─ ticket.py                    # Ticket（工单）
-│  │  │  ├─ asset.py                     # Asset（设备/资产）
-│  │  │  ├─ run.py                       # Run（执行记录）
-│  │  │  └─ artifact.py                  # Artifact（证据/文件元数据）
-│  │  ├─ schemas/                        # Pydantic Schemas（输入输出）
-│  │  │  ├─ auth.py                      # Token/Login
-│  │  │  ├─ user.py
-│  │  │  ├─ ticket.py
-│  │  │  ├─ asset.py
-│  │  │  ├─ run.py
-│  │  │  └─ artifact.py
-│  │  ├─ api/
-│  │  │  ├─ health.py
-│  │  │  ├─ auth.py                      # /auth/login /auth/me
-│  │  │  ├─ users.py                     # /users（可选：管理端）
-│  │  │  ├─ tickets.py                   # /tickets
-│  │  │  ├─ assets.py                    # /assets
-│  │  │  ├─ runs.py                      # /runs（Run 查询/状态/日志）
-│  │  │  └─ artifacts.py                 # /runs/{id}/artifacts 上传/下载
-│  │  ├─ services/
-│  │  │  ├─ registry.py
-│  │  │  ├─ runner.py
-│  │  │  ├─ ticket_service.py            # Ticket 业务逻辑（Domain Service）
-│  │  │  ├─ asset_service.py
-│  │  │  ├─ run_service.py               # Run 创建/完成/失败（写DB）
-│  │  │  ├─ artifact_service.py          # Artifact 入库/校验hash/权限
-│  │  │  └─ auth_service.py              # Auth（验证/发token）
-│  │  ├─ storage/
-│  │  │  ├─ state_store.py               # 运行态状态（先内存后Redis）
-│  │  │  └─ artifact_store.py            # 文件存储抽象（local/s3/minio）
-│  │  ├─ audit/
-│  │  │  ├─ events.py                    # Audit Events（审计事件结构）
-│  │  │  └─ audit_logger.py              # Audit Log（追加式）
-│  │  └─ utils/
-│  │     ├─ hashing.py                   # SHA-256 等
-│  │     └─ time.py                      # 时间源/NTP（可选）
-│  └─ tests/
-│     ├─ test_health.py
-│     ├─ test_auth.py
-│     └─ test_ticket_run_artifact.py
-├─ cluster/
-│  └─ kind/
-│     └─ kind-multi-node.yaml              # Kind 本地集群（1 control-plane + 1 worker）
-├─ scripts/
-├─ script_specs/
-└─ run_local.sh
+# Traceable Execution Platform
+
+一个**可追溯、可还原、受控执行**的后端平台，用于管理工单（Ticket）和执行记录（Run），确保操作的完整审计链（Audit Trail）。
+
+## Tech Stack（技术栈）
+
+| 层级                 | 技术 |
+|--------------------|------|
+| Backend            | Python · FastAPI · SQLAlchemy · Alembic · Pydantic |
+| Database           | PostgreSQL |
+| Cache / 运行态状态      | Redis |
+| Object Storage     | MinIO（S3-compatible） |
+| LLM Proxy          | LiteLLM |
+| Frontend           | 原生 HTML / JS · Nginx |
+| Orchestration / 编排 | Kubernetes · Kind（本地多节点集群） · Nginx Ingress Controller |
+| 容器化                | Docker · Docker Compose |
+| Auth               | JWT（JSON Web Token） |
+
+## Architecture（系统架构）
+
+```mermaid
+graph TD
+    User(("用户 / Browser"))
+
+    User -->|HTTP| Frontend
+
+    subgraph Docker Compose / Kubernetes
+        Frontend["Frontend<br/>(Nginx · 静态页面)"]
+        Backend["Backend<br/>(FastAPI)"]
+        PG[("PostgreSQL<br/>主数据库")]
+        Redis[("Redis<br/>运行态状态 / Cache")]
+        MinIO["MinIO<br/>Artifact 对象存储"]
+        LiteLLM["LiteLLM<br/>LLM Gateway"]
+
+        Frontend -->|REST API| Backend
+        Backend --> PG
+        Backend --> Redis
+        Backend --> MinIO
+        Backend -->|LLM 请求| LiteLLM
+    end
+
+    subgraph LLM Providers
+        LocalAI["本地模型<br/>(Ollama 等)"]
+        ExtAPI["云端 API<br/>(OpenAI / Claude 等)"]
+    end
+
+    LiteLLM --> LocalAI
+    LiteLLM --> ExtAPI
 ```
+
+## Quick Start
+
+### 前置要求
+
+确保本地已安装 [Docker](https://docs.docker.com/get-docker/) 和 Docker Compose。
+
+### 第一步：准备环境变量
+
+```bash
+cp .env.example .env
+```
+
+### 第二步：启动所有服务
+
+一条命令拉起全部依赖：PostgreSQL、Redis、MinIO、LiteLLM、Backend、Frontend。
+
+```bash
+cd docker
+docker compose up -d
+```
+
+首次启动需要拉取 image，稍等片刻。用以下命令确认 backend 已就绪：
+
+```bash
+docker compose logs -f backend
+# 看到 "🚀 Starting Traceable Execution Platform" 即为成功
+```
+
+### 第三步：初始化数据库（仅首次）
+
+```bash
+# 执行 Alembic migration，创建所有数据库表
+docker compose exec backend alembic upgrade head
+
+# 创建默认用户
+docker compose exec backend python scripts/init_db.py
+```
+
+默认账户：
+
+| 角色 | username | password |
+|------|----------|----------|
+| admin（管理员） | `admin` | `admin123` |
+| employee（员工） | `employee` | `employee123` |
+
+### 访问服务
+
+| 服务 | 地址 |
+|------|------|
+| Frontend | http://localhost:3000 |
+| Swagger UI（API 文档） | http://localhost:8000/api/v1/docs |
+| MinIO Console | http://localhost:9001 |
+
