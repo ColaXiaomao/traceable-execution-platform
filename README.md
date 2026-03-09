@@ -1,13 +1,13 @@
 # Traceable Execution Platform
 
-## Overview
+## Overview（项目概览）
 
 一个从零构建的后端平台，覆盖从基础 CRUD、分布式存储到云原生部署的完整技术栈，并预留 AI Infra 扩展方向。
 
-- **Traceable Workflow** — 以 Ticket → Run → Artifact 为核心链路，每次执行都有完整的上下文记录和 append-only Audit Log，操作全程可追溯、不可抵赖
-- **分布式存储** — PostgreSQL 主数据库，Redis 管理运行态状态，MinIO 提供 S3-compatible Artifact 对象存储
-- **云原生部署** — 支持 Docker Compose 一键启动，提供完整 Kubernetes manifest，含 Ingress 和多节点集群配置
-- **LLM Infra** — 通过 LiteLLM Gateway 统一接入本地模型（Ollama）和云端 API（OpenAI / Claude 等），provider 可插拔替换
+- 🔗 **Traceable Workflow** — 以 Ticket → Run → Artifact 为核心链路，每次执行都有完整的上下文记录和 append-only Audit Log，操作全程可追溯、不可抵赖
+- 🗄️ **分布式存储** — PostgreSQL 主数据库，Redis 管理运行态状态，MinIO 提供 S3-compatible Artifact 对象存储
+- ☸️ **云原生部署** — 支持 Docker Compose 一键启动，提供完整 Kubernetes manifest，含 Ingress 和多节点集群配置
+- 🤖 **LLM Infra** — 通过 LiteLLM Gateway 统一接入本地模型（Ollama）和云端 API（OpenAI / Claude 等），provider 可插拔替换
 
 ## Tech Stack（技术栈）
 
