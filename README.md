@@ -24,7 +24,7 @@ graph TD
 
     User -->|HTTP| Frontend
 
-    subgraph Docker Compose / Kubernetes
+    subgraph Platform["Docker Compose / K8s"]
         Frontend["Frontend<br/>(Nginx · 静态页面)"]
         Backend["Backend<br/>(FastAPI)"]
         PG[("PostgreSQL<br/>主数据库")]
@@ -48,7 +48,7 @@ graph TD
     LiteLLM --> ExtAPI
 ```
 
-## Quick Start
+## Quick Start（快速启动）
 
 ### 前置要求
 
