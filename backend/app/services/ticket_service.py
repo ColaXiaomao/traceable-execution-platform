@@ -1,6 +1,7 @@
 """Ticket service for managing work orders."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from backend.app.models.ticket import Ticket, TicketStatus
@@ -11,7 +12,7 @@ from backend.app.audit.audit_logger import audit_logger
 
 
 async def create_ticket(
-    db: Session,
+    db: AsyncSession,
     ticket_in: TicketCreate,
     creator: User
 ) -> Ticket:
@@ -36,8 +37,8 @@ async def create_ticket(
     )
 
     db.add(ticket)
-    db.commit()
-    db.refresh(ticket)
+    await db.commit()
+    await db.refresh(ticket)
 
     # Log ticket creation
     await audit_logger.log(AuditEvent(
@@ -56,7 +57,7 @@ async def create_ticket(
 
 
 async def approve_ticket(
-    db: Session,
+    db: AsyncSession,
     ticket_id: int,
     approver: User
 ) -> Ticket:
@@ -80,7 +81,8 @@ async def approve_ticket(
             detail="Only admins can approve tickets"
         )
 
-    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -97,8 +99,8 @@ async def approve_ticket(
     ticket.status = TicketStatus.APPROVED
     ticket.approved_by_id = approver.id
 
-    db.commit()
-    db.refresh(ticket)
+    await db.commit()
+    await db.refresh(ticket)
 
     # Log approval
     await audit_logger.log(AuditEvent(
@@ -117,7 +119,7 @@ async def approve_ticket(
 
 
 async def update_ticket(
-    db: Session,
+    db: AsyncSession,
     ticket_id: int,
     ticket_in: TicketUpdate,
     user: User
@@ -137,7 +139,8 @@ async def update_ticket(
     Raises:
         HTTPException: If ticket not found or user not authorized
     """
-    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -156,8 +159,8 @@ async def update_ticket(
     for field, value in update_data.items():
         setattr(ticket, field, value)
 
-    db.commit()
-    db.refresh(ticket)
+    await db.commit()
+    await db.refresh(ticket)
 
     # Log update
     await audit_logger.log(AuditEvent(

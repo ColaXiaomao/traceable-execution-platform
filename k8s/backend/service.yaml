@@ -3,11 +3,12 @@ kind: Service
 metadata:
   name: traceable-backend
 spec:
-  type: NodePort
+  type: ClusterIP
+  # 改为 ClusterIP，不再直接对外暴露端口。
+  # 外部流量统一通过 Ingress 进来，由 ingress controller 转发到这个 Service，再到 Pod。
   selector:
     app: traceable-backend
   ports:
     - port: 80
       targetPort: 8000
-      nodePort: 30080
-      # Node 把 30080 转发给 Service，Service 再把 80 转发给 Pod 的 8000
+      # Service 的 80 转发到 Pod 的 8000

@@ -43,11 +43,12 @@ class Settings(BaseSettings):
     artifact_storage_type: Literal["local", "minio", "s3"] = "local"
     artifact_storage_path: str = "./data/artifacts"
 
-    # MinIO/S3 (optional, for future)
+    # MinIO/S3
     minio_endpoint: str | None = None
     minio_access_key: str | None = None
     minio_secret_key: str | None = None
-    minio_bucket: str | None = None
+    minio_use_ssl: bool = False
+    minio_bucket_artifacts: str = "artifacts"
 
     # Audit
     audit_log_path: str = "./data/audit"

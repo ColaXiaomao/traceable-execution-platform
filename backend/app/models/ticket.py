@@ -41,6 +41,15 @@ class Ticket(Base, IDMixin, TimestampMixin):
     asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
     # ForeignKey 写在 Ticket，而不是 Asset的原因是：
     # 一对多，即，一个 Asset对应多个 Ticket。多的一方，持有外键。
+    #
+    # 设计理念：一张工单对应一台设备的一次安装或维修任务，工单的状态 即 该设备本次任务的进度。
+    # 设备记录（Asset）永久保存，同一台设备可以关联多张工单：
+    #   Asset
+    #     ├── Ticket #1  首次安装
+    #     ├── Ticket #2  返修
+    #     └── Ticket #3  再次返修
+    # 通过 asset.tickets 可查看该设备的完整维护历史。
+    # 每台设备的安装状态独立追踪，互不干扰，某台失败不影响其他设备的工单。
 
     # Creator
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -60,6 +69,7 @@ class Ticket(Base, IDMixin, TimestampMixin):
     # 上面的ForeignKey是：数据库层，保证数据正确。这里的relationship是：Python 层。
     approver = relationship("User", foreign_keys=[approved_by_id])
     runs = relationship("Run", back_populates="ticket", cascade="all, delete-orphan")
+    artifacts = relationship("Artifact", back_populates="ticket", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Ticket(id={self.id}, title='{self.title}', status={self.status.value})>"

@@ -2,5 +2,24 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+        # ingress-ready=true 是 nginx ingress controller 的 DaemonSet 用来选择节点的标签，
+        # 加在 control-plane 上，让 ingress controller 的 Pod 落在这里。
+        # Ingress Controller 只允许部署在带 ingress-ready=true 的节点上。
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+        # 把 Mac 本机的 80 端口映射到 kind control-plane 容器的 80，
+        # 这样浏览器访问 localhost:80 就能进到集群里的 ingress controller。
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+        # 同上，443 用于 HTTPS，现在先留着，后续加 TLS 时直接可用。
   - role: worker
   - role: worker

@@ -8,6 +8,10 @@ data:
 
   # ==== Redis ====
   REDIS_URL: "redis://redis:6379/0"
+  # 协议://主机名:端口。
+  # 下面的LiteLLM 本质是一个http服务，所以是http://开头。 Redis用的是Redis 自己的 TCP 协议，所以是redis://开头。
+  # 当 backend 访问http://litellm:4000，会发生如下步骤，
+  # DNS 解析 litellm → ClusterIP，连接这个虚拟 IP，kube-proxy 做负载均衡，转发到某个 litellm Pod。
 
   # ==== LiteLLM ====
   LITELLM_BASE_URL: "http://litellm:4000"
@@ -17,9 +21,14 @@ data:
   ACCESS_TOKEN_EXPIRE_MINUTES: "30"
 
   # ==== Storage ====
-  ARTIFACT_STORAGE_TYPE: "local"
-  ARTIFACT_STORAGE_PATH: "/app/data/artifacts"
-  AUDIT_LOG_PATH: "/app/data/audit"
+  # 已从本地文件系统迁移到 MinIO（S3 兼容对象存储），backend Pod 由此变为无状态，
+  # 不再挂载 PVC，可以自由调度到任意节点。
+  ARTIFACT_STORAGE_TYPE: "s3"
+  MINIO_ENDPOINT: "minio:9000"          # 集群内通过 Service 名访问，对应 minio/service.yaml
+  MINIO_USE_SSL: "false"                # 集群内部通信不需要 SSL
+  MINIO_BUCKET_ARTIFACTS: "artifacts"   # 存放 artifact 文件的 bucket 名
+  MINIO_BUCKET_AUDIT: "audit"           # 存放 audit 日志的 bucket 名
+  # MINIO_ACCESS_KEY / MINIO_SECRET_KEY 是敏感信息，放在 backend-secret 里
 
   # ==== Application ====
   API_V1_PREFIX: "/api/v1"

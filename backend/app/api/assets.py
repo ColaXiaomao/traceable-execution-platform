@@ -1,6 +1,7 @@
 """Asset management endpoints."""
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import select
 
 from backend.app.schemas.asset import AssetCreate, AssetUpdate, AssetResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser
@@ -31,12 +32,13 @@ async def list_assets(
     limit: int = 100
 ):
     """List assets."""
-    query = db.query(Asset)
+    query = select(Asset)
 
     if asset_type:
-        query = query.filter(Asset.asset_type == asset_type)
+        query = query.where(Asset.asset_type == asset_type)
 
-    assets = query.offset(skip).limit(limit).all()
+    result = await db.execute(query.offset(skip).limit(limit))
+    assets = result.scalars().all()
     return assets
 
 
@@ -47,7 +49,8 @@ async def get_asset(
     current_user: CurrentUser
 ):
     """Get asset by ID."""
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
 
     if not asset:
         raise HTTPException(

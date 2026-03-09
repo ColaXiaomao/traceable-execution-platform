@@ -33,8 +33,11 @@ class Artifact(Base, IDMixin, TimestampMixin):
     artifact_type = Column(String(50), nullable=True)  # e.g., "config", "log", "screenshot"
     description = Column(String(500), nullable=True)
 
-    # Related run
-    run_id = Column(Integer, ForeignKey("runs.id"), nullable=False)
+    # Related ticket (primary association)
+    ticket_id = Column(Integer, ForeignKey("tickets.id"), nullable=False)
+
+    # Related run (optional - set when artifact is produced by an automated run)
+    run_id = Column(Integer, ForeignKey("runs.id"), nullable=True)
 
     # Uploader
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -43,6 +46,7 @@ class Artifact(Base, IDMixin, TimestampMixin):
     is_deleted = Column(Boolean, default=False, nullable=False)
 
     # Relationships
+    ticket = relationship("Ticket", back_populates="artifacts")
     run = relationship("Run", back_populates="artifacts")
     uploader = relationship("User", foreign_keys=[uploaded_by_id])
 
