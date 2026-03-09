@@ -1,61 +1,63 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
-import { getTicket, approveTicket } from "@/api/tickets";
+import { ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
+import { getTicket, updateTicket, Ticket } from "@/api/tickets";
 
 const route = useRoute();
+const router = useRouter();
+const ticketId = route.params.id as string;
 
-const ticket = ref<any>({});
+const loading = ref(false);
+const ticket = ref<Ticket | null>(null);
+const title = ref("");
+const description = ref("");
 
 const fetchTicket = async () => {
-  const id = Number(route.params.id);
-  const res = await getTicket(id);
-  ticket.value = res.data;
+  loading.value = true;
+  try {
+    const res = await getTicket(ticketId);
+    ticket.value = res.data;
+    title.value = ticket.value.title;
+    description.value = ticket.value.description || "";
+  } catch (error) {
+    console.error("获取工单失败", error);
+  } finally {
+    loading.value = false;
+  }
 };
 
-const approve = async () => {
-  await approveTicket(ticket.value.id);
-  ElMessage.success("审批成功");
-  fetchTicket();
+const handleUpdate = async () => {
+  loading.value = true;
+  try {
+    await updateTicket(ticketId, { title: title.value, description: description.value });
+    ElMessage.success("更新成功");
+    router.push("/ticket/index");
+  } catch (error) {
+    console.error("更新失败", error);
+    ElMessage.error("更新失败");
+  } finally {
+    loading.value = false;
+  }
 };
 
-onMounted(() => {
-  fetchTicket();
-});
+onMounted(fetchTicket);
 </script>
 
 <template>
-  <div>
-    <h2>工单详情</h2>
-
-    <el-descriptions border>
-
-      <el-descriptions-item label="ID">
-        {{ ticket.id }}
-      </el-descriptions-item>
-
-      <el-descriptions-item label="标题">
-        {{ ticket.title }}
-      </el-descriptions-item>
-
-      <el-descriptions-item label="描述">
-        {{ ticket.description }}
-      </el-descriptions-item>
-
-      <el-descriptions-item label="状态">
-        {{ ticket.status }}
-      </el-descriptions-item>
-
-    </el-descriptions>
-
-    <el-button
-      type="success"
-      style="margin-top:20px"
-      @click="approve"
-    >
-      审批
-    </el-button>
-
+  <div class="main">
+    <el-form label-width="100px">
+      <el-form-item label="标题">
+        <el-input v-model="title"></el-input>
+      </el-form-item>
+      <el-form-item label="描述">
+        <el-input type="textarea" v-model="description"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" :loading="loading" @click="handleUpdate">
+          更新
+        </el-button>
+      </el-form-item>
+    </el-form>
   </div>
 </template>

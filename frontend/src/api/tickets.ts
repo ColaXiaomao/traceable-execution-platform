@@ -1,41 +1,45 @@
-// 此为tickets的api接口,写所有请求
+// src/api/tickets.ts
 import { http } from "@/utils/http";
 
-/** * 
- * 这里的 'any' 后续建议替换为你定义的具体 Interface 
- * 以符合你追求的工程化标准
- */
-
-// 1. 获取工单列表 (GET /api/v1/tickets)
-export const getTicketList = (params?: object) => {
-  return http.request<any>("get", "/api/v1/tickets", { params });
-};
-
-// 2. 创建新工单 (POST /api/v1/tickets)
-export const createTicket = (data: object) => {
-  return http.request<any>("post", "/api/v1/tickets", { data });
-};
-
-// 3. 获取指定工单详情 (GET /api/v1/tickets/{ticket_id})
-export const getTicketDetail = (id: string | number) => {
-  return http.request<any>("get", `/api/v1/tickets/${id}`);
-};
-
-// 4. 更新工单 (PATCH /api/v1/tickets/{ticket_id})
-export const updateTicket = (id: string | number, data: object) => {
-  return http.request<any>("patch", `/api/v1/tickets/${id}`, { data });
-};
-
-// 5. 审批工单 (POST /api/v1/tickets/{ticket_id}/approve)
-export const approveTicket = (id: string | number) => {
-  return http.request<any>("post", `/api/v1/tickets/${id}/approve`);
-};
-
-//写类型
-export interface Ticket {
+/** 工单类型 */
+export type Ticket = {
   id: number;
   title: string;
-  description: string;
-  status: string;
+  status: "submitted" | "approved" | "rejected";
+  description: string | null;
+  asset_id: number | null;
+  created_by_id: number;
+  approved_by_id: number | null;
   created_at: string;
-}
+  updated_at: string;
+  [key: string]: any; // 保留额外字段，防止后端加字段报错
+};
+
+/** 获取工单列表 */
+// api/tickets.ts
+export const getTicketList = (params?: { page?: number; pageSize?: number }) => {
+  return http.request<{ list: Ticket[]; total: number }>("get", "/api/v1/tickets", {
+    params
+  });
+};
+
+/** 创建新工单 */
+export const createTicket = (data: { title: string; description?: string }) => {
+  return http.request("post", "/api/v1/tickets", { data });
+};
+
+/** 获取单个工单详情 */
+export const getTicket = (ticket_id: number | string) => {
+  return http.request<{ data: Ticket }>("get", `/api/v1/tickets/${ticket_id}`);
+};
+
+/** 更新工单 */
+export const updateTicket = (ticket_id: number | string, data: Partial<Ticket>) => {
+  return http.request("patch", `/api/v1/tickets/${ticket_id}`, { data });
+};
+
+/** 审批工单 */
+export const approveTicket = (ticket_id: number | string) => {
+  return http.request("post", `/api/v1/tickets/${ticket_id}/approve`);
+};
+
