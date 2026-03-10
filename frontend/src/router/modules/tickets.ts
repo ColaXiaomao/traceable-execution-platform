@@ -1,10 +1,10 @@
 import { type RouteRecordRaw } from "vue-router";
-import Layout from "@/layout/index.vue";
+//import Layout from "@/layout/index.vue";
 
 const ticketsRoutes: RouteRecordRaw = {
   path: "/ticket",
   name: "Ticket",
-  component: Layout,
+  //component: Layout,
   redirect: "/ticket/index", // 父路由重定向到列表页
   meta: {
     title: "工单管理",
@@ -13,7 +13,7 @@ const ticketsRoutes: RouteRecordRaw = {
   },
   children: [
     {
-      path: "index",
+      path: "/ticket/index",
       name: "TicketList",
       component: () => import("@/views/tickets/index.vue"),
       meta: {
@@ -22,7 +22,7 @@ const ticketsRoutes: RouteRecordRaw = {
       }
     },
     {
-      path: "create",
+      path: "/ticket/create",
       name: "TicketCreate",
       component: () => import("@/views/tickets/create.vue"),
       meta: {
@@ -31,7 +31,7 @@ const ticketsRoutes: RouteRecordRaw = {
       }
     },
     {
-      path: "detail/:id",
+      path: "/ticket/detail/:id",
       name: "TicketDetail",
       component: () => import("@/views/tickets/detail.vue"),
       meta: {

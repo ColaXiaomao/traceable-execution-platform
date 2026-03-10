@@ -15,12 +15,10 @@ export type Ticket = {
   [key: string]: any; // 保留额外字段，防止后端加字段报错
 };
 
+
 /** 获取工单列表 */
-// api/tickets.ts
-export const getTicketList = (params?: { page?: number; pageSize?: number }) => {
-  return http.request<{ list: Ticket[]; total: number }>("get", "/api/v1/tickets", {
-    params
-  });
+export const getTicketList = () => {
+  return http.request<Ticket[]>("get", "/api/v1/tickets");
 };
 
 /** 创建新工单 */
@@ -43,3 +41,7 @@ export const approveTicket = (ticket_id: number | string) => {
   return http.request("post", `/api/v1/tickets/${ticket_id}/approve`);
 };
 
+/** 获取当前登录用户信息 */
+export const getCurrentUser = () => {
+  return http.request<{ is_admin: boolean }>("get", "/api/v1/auth/me");
+};
