@@ -14,7 +14,10 @@ const statusMap: Record<string, { label: string; type: string }> = {
   draft:     { label: "草稿",   type: "info" },
   submitted: { label: "待审批", type: "warning" },
   approved:  { label: "已通过", type: "success" },
-  rejected:  { label: "已拒绝", type: "danger" }
+  running:   { label: "执行中", type: "primary" },
+  done:      { label: "已完成", type: "success" },
+  failed:    { label: "失败",   type: "danger" },
+  closed:    { label: "已关闭", type: "info" }
 };
 
 const fetchTickets = async () => {
