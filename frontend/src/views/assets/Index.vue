@@ -33,13 +33,13 @@ onMounted(fetchAssets);
     </div>
 
     <el-table :data="assets" v-loading="loading" border stripe>
-      <el-table-column prop="id" label="ID" width="70" />
-      <el-table-column prop="name" label="名称" min-width="150" />
-      <el-table-column prop="asset_type" label="类型" width="120" />
-      <el-table-column prop="serial_number" label="序列号" width="150" />
-      <el-table-column prop="location" label="位置" width="150" />
+      <el-table-column prop="id" label="ID" width="70" sortable/>
+      <el-table-column prop="name" label="名称" min-width="150" sortable/>
+      <el-table-column prop="asset_type" label="类型" width="120" sortable/>
+      <el-table-column prop="serial_number" label="序列号" width="150" sortable/>
+      <el-table-column prop="location" label="位置" width="150" sortable/>
       <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="created_at" label="创建时间" width="180">
+      <el-table-column prop="created_at" label="创建时间" width="180" sortable>
         <template #default="{ row }">
           {{ new Date(row.created_at).toLocaleString("zh-CN", { hour12: false }) }}
         </template>
