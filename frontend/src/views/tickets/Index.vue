@@ -63,10 +63,10 @@ onMounted(fetchTickets);
     </div>
 
     <el-table :data="tickets" v-loading="loading" border stripe>
-      <el-table-column prop="id" label="ID" width="70" />
-      <el-table-column prop="title" label="标题" min-width="150" />
-      <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="status" label="状态" width="100">
+      <el-table-column prop="id" label="ID" width="70" sortable />
+      <el-table-column prop="title" label="标题" min-width="150" sortable/>
+      <el-table-column prop="description" label="描述" min-width="200" sortable show-overflow-tooltip />
+      <el-table-column prop="status" label="状态" width="100" sortable>
         <template #default="{ row }">
           <el-tag :type="statusMap[row.status]?.type">
             {{ statusMap[row.status]?.label || row.status }}
