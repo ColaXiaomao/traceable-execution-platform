@@ -26,3 +26,4 @@ export interface Asset {
 export const getAssets = () => api.get<Asset[]>("/assets");
 export const getAsset = (id: number) => api.get<Asset>(`/assets/${id}`);
 export const createAsset = (data: Partial<Asset>) => api.post<Asset>("/assets", data);
+export const updateAsset = (id: number, data: Partial<Asset>) => api.patch<Asset>(`/assets/${id}`, data);

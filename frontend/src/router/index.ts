@@ -43,6 +43,11 @@ const router = createRouter({
           component: () => import("@/views/assets/Create.vue")
         },
         {
+          path: "assets/:id",
+          name: "AssetDetail",
+          component: () => import("@/views/assets/Detail.vue")
+        },
+        {
           path: "runs",
           name: "Runs",
           component: () => import("@/views/runs/Index.vue")
