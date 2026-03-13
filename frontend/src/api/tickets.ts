@@ -26,4 +26,5 @@ export interface Ticket {
 export const getTickets = () => api.get<Ticket[]>("/tickets");
 export const getTicket = (id: number) => api.get<Ticket>(`/tickets/${id}`);
 export const createTicket = (data: Partial<Ticket>) => api.post<Ticket>("/tickets", data);
+export const updateTicket = (id: number, data: Partial<Ticket>) => api.patch<Ticket>(`/tickets/${id}`, data);
 export const approveTicket = (id: number) => api.post(`/tickets/${id}/approve`);
