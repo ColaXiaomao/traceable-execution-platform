@@ -55,10 +55,14 @@ const logout = () => {
           <el-menu-item index="/assets/create">创建资产</el-menu-item>
         </el-sub-menu>
 
-        <el-menu-item index="/runs">
-          <el-icon><List /></el-icon>
-          <template #title>运行记录</template>
-        </el-menu-item>
+        <el-sub-menu index="runs">
+          <template #title>
+            <el-icon><List /></el-icon>
+            <span>运行记录</span>
+          </template>
+          <el-menu-item index="/runs">运行列表</el-menu-item>
+          <el-menu-item index="/runs/create">创建运行</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
 

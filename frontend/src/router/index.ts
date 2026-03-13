@@ -56,7 +56,17 @@ const router = createRouter({
           path: "tickets/:id",
           name: "TicketDetail",
           component: () => import("@/views/tickets/Detail.vue")
-       }
+        },
+        {
+          path: "runs/:id",
+          name: "RunDetail",
+          component: () => import("@/views/runs/Detail.vue")
+        },
+        {
+          path: "runs/create",
+          name: "RunCreate",
+          component: () => import("@/views/runs/Create.vue")
+        }
       ]
     }
   ]
