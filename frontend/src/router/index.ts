@@ -14,7 +14,7 @@ const router = createRouter({
     },
     {
       path: "/",
-      component: () => import("@/views/Layout.vue"),
+      component: () => import("@/layout/index.vue"),
       meta: { requiresAuth: true },
       children: [
         {

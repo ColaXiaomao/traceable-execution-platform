@@ -2,19 +2,16 @@
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { getRun, type Run } from "@/api/runs";
+import { getRun } from "@/api/runs";
+import type { Run } from "@/types/run";
+import { RUN_STATUS_MAP } from "@/types/run";
+import { formatTime } from "@/utils/format";
+import StatusTag from "@/components/StatusTag.vue";
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const run = ref<Run | null>(null);
-
-const statusMap: Record<string, { label: string; type: string }> = {
-  pending:  { label: "等待中", type: "info" },
-  running:  { label: "执行中", type: "primary" },
-  done:     { label: "已完成", type: "success" },
-  failed:   { label: "失败",   type: "danger" }
-};
 
 const fetchRun = async () => {
   loading.value = true;
@@ -27,9 +24,6 @@ const fetchRun = async () => {
     loading.value = false;
   }
 };
-
-const formatTime = (time: string) =>
-  new Date(time).toLocaleString("zh-CN", { hour12: false });
 
 onMounted(fetchRun);
 </script>
@@ -45,9 +39,7 @@ onMounted(fetchRun);
       <el-descriptions :column="2" border>
         <el-descriptions-item label="运行ID">{{ run.id }}</el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="statusMap[run.status]?.type">
-            {{ statusMap[run.status]?.label || run.status }}
-          </el-tag>
+          <StatusTag :status="run.status" :status-map="RUN_STATUS_MAP" />
         </el-descriptions-item>
         <el-descriptions-item label="工单ID">{{ run.ticket_id }}</el-descriptions-item>
         <el-descriptions-item label="类型">{{ run.run_type }}</el-descriptions-item>
@@ -59,7 +51,6 @@ onMounted(fetchRun);
         <el-descriptions-item label="更新时间">{{ formatTime(run.updated_at) }}</el-descriptions-item>
       </el-descriptions>
 
-      <!-- 日志输出 -->
       <div v-if="run.stdout_log" class="log-section">
         <h3>标准输出</h3>
         <pre class="log-box">{{ run.stdout_log }}</pre>
@@ -73,23 +64,12 @@ onMounted(fetchRun);
 </template>
 
 <style scoped>
-.page-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-h2 { margin: 0; font-size: 20px; flex: 1; }
 .log-section { margin-top: 24px; }
 .log-section h3 { font-size: 14px; color: #666; margin-bottom: 8px; }
 .log-box {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  overflow-x: auto;
-  white-space: pre-wrap;
+  background: #1e1e1e; color: #d4d4d4;
+  padding: 16px; border-radius: 6px;
+  font-size: 13px; overflow-x: auto; white-space: pre-wrap;
 }
 .log-box.error { color: #f48771; }
 </style>

@@ -1,21 +1,12 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
-import ElementPlus from "element-plus";
-import "element-plus/dist/index.css";
-import zhCn from "element-plus/es/locale/lang/zh-cn";
 import router from "./router";
 import App from "./App.vue";
-import { useUserStore } from "@/stores/user";
+import setupElementPlus from "./plugins/element-plus";
+import "./styles/index.css";
 
 const app = createApp(App);
-
 app.use(createPinia());
 app.use(router);
-app.use(ElementPlus, { locale: zhCn });
-
-const userStore = useUserStore();
-if (userStore.token) {
-  userStore.fetchUserInfo();
-}
-
+setupElementPlus(app);
 app.mount("#app");

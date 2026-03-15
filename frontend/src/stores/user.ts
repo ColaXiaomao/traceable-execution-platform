@@ -1,11 +1,11 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { login, getMe } from "@/api/auth";
-//Vue 组件之间不能直接共享数据，所以需要一个全局的地方来存这些信息，这就是 Pinia store
+import type { User } from "@/types/user";
 
 export const useUserStore = defineStore("user", () => {
   const token = ref(localStorage.getItem("token") || "");
-  const userInfo = ref<any>(null);
+  const userInfo = ref<User | null>(null);
 
   async function loginByUsername(username: string, password: string) {
     const res = await login(username, password);

@@ -3,7 +3,8 @@ import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { createRun } from "@/api/runs";
-import { getTickets, type Ticket } from "@/api/tickets";
+import { getTickets } from "@/api/tickets";
+import type { Ticket } from "@/types/ticket";
 
 const router = useRouter();
 const formRef = ref<FormInstance>();
@@ -20,16 +21,6 @@ const form = ref({
 const rules: FormRules = {
   script_id: [{ required: true, message: "请输入脚本ID", trigger: "blur" }],
   ticket_id: [{ required: true, message: "请选择工单", trigger: "change" }]
-};
-
-const runTypeOptions = [
-  { label: "Proof", value: "proof" },
-  { label: "Action", value: "action" }
-];
-
-const fetchTickets = async () => {
-  const res = await getTickets();
-  tickets.value = res.data.filter(t => t.status === "approved");
 };
 
 const onSubmit = async () => {
@@ -49,33 +40,28 @@ const onSubmit = async () => {
   });
 };
 
-onMounted(fetchTickets);
+onMounted(() =>
+  getTickets().then(res => (tickets.value = res.data.filter(t => t.status === "approved")))
+);
 </script>
 
 <template>
   <div>
-    <div class="page-header">
-      <h2>创建运行</h2>
-    </div>
-
-    <el-card>
+    <div class="page-header"><h2>创建运行</h2></div>
+    <el-card style="max-width:600px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="运行类型" prop="run_type">
-          <el-select v-model="form.run_type" style="width: 100%">
-            <el-option v-for="t in runTypeOptions" :key="t.value" :label="t.label" :value="t.value" />
+          <el-select v-model="form.run_type" style="width:100%">
+            <el-option label="Proof" value="proof" />
+            <el-option label="Action" value="action" />
           </el-select>
         </el-form-item>
         <el-form-item label="脚本ID" prop="script_id">
           <el-input v-model="form.script_id" placeholder="请输入脚本ID" />
         </el-form-item>
         <el-form-item label="关联工单" prop="ticket_id">
-          <el-select v-model="form.ticket_id" placeholder="选择已审批的工单" style="width: 100%">
-            <el-option
-              v-for="t in tickets"
-              :key="t.id"
-              :label="`#${t.id} ${t.title}`"
-              :value="t.id"
-            />
+          <el-select v-model="form.ticket_id" placeholder="选择已审批的工单" style="width:100%">
+            <el-option v-for="t in tickets" :key="t.id" :label="`#${t.id} ${t.title}`" :value="t.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -86,9 +72,3 @@ onMounted(fetchTickets);
     </el-card>
   </div>
 </template>
-
-<style scoped>
-.page-header { margin-bottom: 20px; }
-h2 { margin: 0; font-size: 20px; }
-.el-card { max-width: 600px; }
-</style>

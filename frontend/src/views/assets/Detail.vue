@@ -2,7 +2,9 @@
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage, type FormInstance } from "element-plus";
-import { getAsset, updateAsset, type Asset } from "@/api/assets";
+import { getAsset, updateAsset } from "@/api/assets";
+import type { Asset } from "@/types/asset";
+import { formatTime } from "@/utils/format";
 
 const route = useRoute();
 const router = useRouter();
@@ -11,13 +13,7 @@ const asset = ref<Asset | null>(null);
 const editing = ref(false);
 const formRef = ref<FormInstance>();
 
-const editForm = ref({
-  name: "",
-  asset_type: "",
-  serial_number: "",
-  location: "",
-  description: ""
-});
+const editForm = ref({ name: "", asset_type: "", serial_number: "", location: "", description: "" });
 
 const fetchAsset = async () => {
   loading.value = true;
@@ -61,9 +57,6 @@ const saveEdit = async () => {
   });
 };
 
-const formatTime = (time: string) =>
-  new Date(time).toLocaleString("zh-CN", { hour12: false });
-
 onMounted(fetchAsset);
 </script>
 
@@ -72,7 +65,7 @@ onMounted(fetchAsset);
     <div class="page-header">
       <el-button link @click="router.push('/assets')">← 返回列表</el-button>
       <h2>资产详情</h2>
-      <div class="header-actions">
+      <div style="display:flex; gap:8px">
         <el-button v-if="!editing" @click="startEdit">编辑</el-button>
         <template v-if="editing">
           <el-button type="primary" @click="saveEdit">保存</el-button>
@@ -81,7 +74,6 @@ onMounted(fetchAsset);
       </div>
     </div>
 
-    <!-- 查看模式 -->
     <el-card v-if="asset && !editing">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="资产ID">{{ asset.id }}</el-descriptions-item>
@@ -90,42 +82,25 @@ onMounted(fetchAsset);
         <el-descriptions-item label="序列号">{{ asset.serial_number || "无" }}</el-descriptions-item>
         <el-descriptions-item label="位置">{{ asset.location || "无" }}</el-descriptions-item>
         <el-descriptions-item label="描述" :span="2">{{ asset.description || "无" }}</el-descriptions-item>
-        <el-descriptions-item label="创建人ID">{{ asset.created_by_id }}</el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ formatTime(asset.created_at) }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ formatTime(asset.updated_at) }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
-    <!-- 编辑模式 -->
     <el-card v-if="asset && editing">
       <el-form ref="formRef" :model="editForm" label-width="80px">
-        <el-form-item label="名称" prop="name" :rules="[{ required: true, message: '请输入名称' }]">
+        <el-form-item label="名称" :rules="[{ required: true, message: '请输入名称' }]">
           <el-input v-model="editForm.name" />
         </el-form-item>
-        <el-form-item label="类型" prop="asset_type" :rules="[{ required: true, message: '请输入类型' }]">
+        <el-form-item label="类型" :rules="[{ required: true, message: '请输入类型' }]">
           <el-input v-model="editForm.asset_type" />
         </el-form-item>
-        <el-form-item label="序列号" prop="serial_number">
-          <el-input v-model="editForm.serial_number" />
-        </el-form-item>
-        <el-form-item label="位置" prop="location">
-          <el-input v-model="editForm.location" />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
+        <el-form-item label="序列号"><el-input v-model="editForm.serial_number" /></el-form-item>
+        <el-form-item label="位置"><el-input v-model="editForm.location" /></el-form-item>
+        <el-form-item label="描述">
           <el-input v-model="editForm.description" type="textarea" :rows="4" />
         </el-form-item>
       </el-form>
     </el-card>
   </div>
 </template>
-
-<style scoped>
-.page-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-h2 { margin: 0; font-size: 20px; flex: 1; }
-.header-actions { display: flex; gap: 8px; }
-</style>
