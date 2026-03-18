@@ -1,6 +1,7 @@
 import request from "@/utils/request";
 import type { Artifact } from "@/types/artifact";
 
+
 export const getTicketArtifacts = (ticketId: number) =>
   request.get<Artifact[]>(`/artifacts/ticket/${ticketId}`);
 
