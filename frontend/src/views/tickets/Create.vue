@@ -11,13 +11,16 @@ const formRef = ref<FormInstance>();
 const loading = ref(false);
 const assets = ref<Asset[]>([]);
 
+// 表单数据：标题、描述（选填）、关联资产
 const form = ref({ title: "", description: "", asset_id: undefined as number | undefined });
 
+// 校验规则：标题和资产必填
 const rules: FormRules = {
   title: [{ required: true, message: "请输入工单标题", trigger: "blur" }],
   asset_id: [{ required: true, message: "请选择资产", trigger: "change" }]
 };
 
+// 提交：校验表单 → 调接口 → 成功后跳回列表页
 const onSubmit = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async valid => {
@@ -35,6 +38,7 @@ const onSubmit = async () => {
   });
 };
 
+// 页面加载时拉取资产列表，填充下拉选项
 onMounted(() => getAssets().then(res => (assets.value = res.data)));
 </script>
 
