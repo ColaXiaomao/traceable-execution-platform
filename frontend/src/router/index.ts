@@ -33,6 +33,11 @@ const router = createRouter({
           component: () => import("@/views/tickets/Create.vue")
         },
         {
+          path: "tickets/:id",
+          name: "TicketDetail",
+          component: () => import("@/views/tickets/Detail.vue")
+        },
+        {
           path: "assets",
           name: "Assets",
           component: () => import("@/views/assets/Index.vue")
@@ -53,32 +58,55 @@ const router = createRouter({
           component: () => import("@/views/runs/Index.vue")
         },
         {
-          path: "tickets/:id",
-          name: "TicketDetail",
-          component: () => import("@/views/tickets/Detail.vue")
+          path: "runs/create",
+          name: "RunCreate",
+          component: () => import("@/views/runs/Create.vue"),
+          meta: { requiresAdmin: true }
         },
         {
           path: "runs/:id",
           name: "RunDetail",
           component: () => import("@/views/runs/Detail.vue")
-        },
-        {
-          path: "runs/create",
-          name: "RunCreate",
-          component: () => import("@/views/runs/Create.vue")
         }
       ]
+    },
+    {
+      path: "/403",
+      name: "Forbidden",
+      component: () => import("@/views/error/403.vue")
+    },
+    {
+      path: "/500",
+      name: "ServerError",
+      component: () => import("@/views/error/500.vue")
+    },
+    {
+      path: "/:pathMatch(.*)*",
+      name: "NotFound",
+      component: () => import("@/views/error/404.vue")
     }
   ]
 });
 
 router.beforeEach((to, _, next) => {
   const token = localStorage.getItem("token");
+
+  // 未登录跳登录页
   if (to.meta.requiresAuth && !token) {
     next("/login");
-  } else {
-    next();
+    return;
   }
+
+  // 需要管理员权限
+  if (to.meta.requiresAdmin) {
+    const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+    if (!userInfo?.is_admin) {
+      next("/403");
+      return;
+    }
+  }
+
+  next();
 });
 
 export default router;

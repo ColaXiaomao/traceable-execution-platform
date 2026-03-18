@@ -14,9 +14,15 @@ request.interceptors.request.use(config => {
 request.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status;
+    if (status === 401) {
       localStorage.removeItem("token");
+      localStorage.removeItem("userInfo");
       window.location.href = "/login";
+    } else if (status === 403) {
+      window.location.href = "/403";
+    } else if (status === 500) {
+      window.location.href = "/500";
     }
     return Promise.reject(err);
   }

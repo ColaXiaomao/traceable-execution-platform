@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { House, Tickets, Box, List, Fold, Expand } from "@element-plus/icons-vue";
@@ -8,6 +8,8 @@ const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
 const collapsed = ref(false);
+
+const isAdmin = computed(() => userStore.userInfo?.is_admin);
 
 const logout = () => {
   userStore.logout();
@@ -35,6 +37,7 @@ const logout = () => {
           <el-icon><House /></el-icon>
           <template #title>首页</template>
         </el-menu-item>
+
         <el-sub-menu index="tickets">
           <template #title>
             <el-icon><Tickets /></el-icon>
@@ -43,6 +46,7 @@ const logout = () => {
           <el-menu-item index="/tickets">工单列表</el-menu-item>
           <el-menu-item index="/tickets/create">创建工单</el-menu-item>
         </el-sub-menu>
+
         <el-sub-menu index="assets">
           <template #title>
             <el-icon><Box /></el-icon>
@@ -51,13 +55,15 @@ const logout = () => {
           <el-menu-item index="/assets">资产列表</el-menu-item>
           <el-menu-item index="/assets/create">创建资产</el-menu-item>
         </el-sub-menu>
+
         <el-sub-menu index="runs">
           <template #title>
             <el-icon><List /></el-icon>
             <span>运行记录</span>
           </template>
           <el-menu-item index="/runs">运行列表</el-menu-item>
-          <el-menu-item index="/runs/create">创建运行</el-menu-item>
+          <!-- 只有管理员能看到创建运行 -->
+          <el-menu-item v-if="isAdmin" index="/runs/create">创建运行</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>
@@ -68,6 +74,7 @@ const logout = () => {
           <el-button link :icon="collapsed ? Expand : Fold" @click="collapsed = !collapsed" size="large" />
         </div>
         <div class="header-right">
+          <el-tag v-if="isAdmin" type="danger" size="small">管理员</el-tag>
           <span>{{ userStore.userInfo?.full_name || userStore.userInfo?.username }}</span>
           <el-button link @click="logout">退出登录</el-button>
         </div>
