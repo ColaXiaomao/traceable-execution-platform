@@ -1,9 +1,30 @@
 import request from "@/utils/request";
 import type { Ticket } from "@/types/ticket";
 
-export const getTickets = (params?: { skip?: number; limit?: number }) =>
+// 查询参数类型
+interface GetTicketsParams {
+  skip?: number;  // 跳过多少条（用于分页）
+  limit?: number; // 最多返回多少条（用于分页）
+}
+
+// 获取工单列表，支持分页
+export const getTickets = (params?: GetTicketsParams) =>
   request.get<Ticket[]>("/tickets", { params });
-export const getTicket = (id: number) => request.get<Ticket>(`/tickets/${id}`);
-export const createTicket = (data: Partial<Ticket>) => request.post<Ticket>("/tickets", data);
-export const updateTicket = (id: number, data: Partial<Ticket>) => request.patch<Ticket>(`/tickets/${id}`, data);
-export const approveTicket = (id: number) => request.post(`/tickets/${id}/approve`);
+
+// 根据 ID 获取单个工单详情
+export const getTicket = (id: number) =>
+  request.get<Ticket>(`/tickets/${id}`);
+
+// 创建新工单
+// Partial<Ticket> 表示 Ticket 的所有字段都是可选的（不必填满）
+export const createTicket = (data: Partial<Ticket>) =>
+  request.post<Ticket>("/tickets", data);
+
+// 更新指定工单（局部更新，只传要改的字段）
+export const updateTicket = (id: number, data: Partial<Ticket>) =>
+  request.patch<Ticket>(`/tickets/${id}`, data);
+
+// 审批通过指定工单
+// 不需要传 body，只需要工单 ID，由后端处理审批逻辑
+export const approveTicket = (id: number) =>
+  request.post(`/tickets/${id}/approve`);
