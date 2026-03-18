@@ -13,12 +13,20 @@ const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);
 const tickets = ref<Ticket[]>([]);
+const total = ref(0);
+const currentPage = ref(1);
+const pageSize = ref(10);
 
 const fetchTickets = async () => {
   loading.value = true;
   try {
-    const res = await getTickets();
+    const skip = (currentPage.value - 1) * pageSize.value;
+    const res = await getTickets({ skip, limit: pageSize.value });
     tickets.value = res.data;
+    // 后端没有返回total，用当前数量判断是否还有更多
+    total.value = res.data.length < pageSize.value
+      ? skip + res.data.length
+      : skip + res.data.length + 1;
   } catch {
     ElMessage.error("获取工单列表失败");
   } finally {
@@ -26,11 +34,20 @@ const fetchTickets = async () => {
   }
 };
 
+const handlePageChange = (page: number) => {
+  currentPage.value = page;
+  fetchTickets();
+};
+
+const handleSizeChange = (size: number) => {
+  pageSize.value = size;
+  currentPage.value = 1;
+  fetchTickets();
+};
+
 const handleApprove = async (row: Ticket) => {
   await ElMessageBox.confirm(`确认通过工单「${row.title}」？`, "提示", {
-    confirmButtonText: "确认",
-    cancelButtonText: "取消",
-    type: "warning"
+    confirmButtonText: "确认", cancelButtonText: "取消", type: "warning"
   });
   try {
     await approveTicket(row.id);
@@ -48,9 +65,7 @@ onMounted(fetchTickets);
   <div>
     <div class="page-header">
       <h2>工单列表</h2>
-      <el-button type="primary" @click="router.push('/tickets/create')">
-        + 创建工单
-      </el-button>
+      <el-button type="primary" @click="router.push('/tickets/create')">+ 创建工单</el-button>
     </div>
 
     <el-table :data="tickets" v-loading="loading" border stripe>
@@ -77,5 +92,25 @@ onMounted(fetchTickets);
         </template>
       </el-table-column>
     </el-table>
+
+    <div class="pagination">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+        :total="total"
+        layout="total, sizes, prev, pager, next"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
+      />
+    </div>
   </div>
 </template>
+
+<style scoped>
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

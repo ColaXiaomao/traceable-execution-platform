@@ -9,17 +9,35 @@ import { formatTime } from "@/utils/format";
 const router = useRouter();
 const loading = ref(false);
 const assets = ref<Asset[]>([]);
+const total = ref(0);
+const currentPage = ref(1);
+const pageSize = ref(10);
 
 const fetchAssets = async () => {
   loading.value = true;
   try {
-    const res = await getAssets();
+    const skip = (currentPage.value - 1) * pageSize.value;
+    const res = await getAssets({ skip, limit: pageSize.value });
     assets.value = res.data;
+    total.value = res.data.length < pageSize.value
+      ? skip + res.data.length
+      : skip + res.data.length + 1;
   } catch {
     ElMessage.error("获取资产列表失败");
   } finally {
     loading.value = false;
   }
+};
+
+const handlePageChange = (page: number) => {
+  currentPage.value = page;
+  fetchAssets();
+};
+
+const handleSizeChange = (size: number) => {
+  pageSize.value = size;
+  currentPage.value = 1;
+  fetchAssets();
 };
 
 onMounted(fetchAssets);
@@ -31,6 +49,7 @@ onMounted(fetchAssets);
       <h2>资产列表</h2>
       <el-button type="primary" @click="router.push('/assets/create')">+ 创建资产</el-button>
     </div>
+
     <el-table :data="assets" v-loading="loading" border stripe>
       <el-table-column prop="id" label="ID" width="70" sortable />
       <el-table-column prop="name" label="名称" min-width="150" sortable />
@@ -47,5 +66,25 @@ onMounted(fetchAssets);
         </template>
       </el-table-column>
     </el-table>
+
+    <div class="pagination">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+        :total="total"
+        layout="total, sizes, prev, pager, next"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
+      />
+    </div>
   </div>
 </template>
+
+<style scoped>
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>
