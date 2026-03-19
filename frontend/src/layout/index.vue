@@ -2,7 +2,8 @@
 import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import { House, Tickets, Box, List, Fold, Expand } from "@element-plus/icons-vue";
+import { House, Tickets, Box, List, Fold, Expand, ChatDotRound } from "@element-plus/icons-vue";
+
 
 const router = useRouter();
 const route = useRoute();
@@ -65,6 +66,12 @@ const logout = () => {
           <!-- 只有管理员能看到创建运行 -->
           <el-menu-item v-if="isAdmin" index="/runs/create">创建运行</el-menu-item>
         </el-sub-menu>
+
+        <el-menu-item index="/chat">
+          <el-icon><ChatDotRound /></el-icon>
+          <template #title>AI 对话</template>
+        </el-menu-item>
+        
       </el-menu>
     </el-aside>
 

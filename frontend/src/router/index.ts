@@ -21,6 +21,7 @@ const protectedChildren: RouteRecordRaw[] = [
   { path: "runs",           name: "Runs",          component: () => import("@/views/runs/Index.vue") },
   { path: "runs/create",    name: "RunCreate",     component: () => import("@/views/runs/Create.vue"), meta: { requiresAdmin: true } },
   { path: "runs/:id",       name: "RunDetail",     component: () => import("@/views/runs/Detail.vue") },
+  { path: "chat",           name: "Chat",          component: () => import("@/views/chat/Index.vue") },
 ];
 
 // ─── 路由主体 ────────────────────────────────────────────────────
