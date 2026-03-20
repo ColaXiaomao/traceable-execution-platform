@@ -31,11 +31,7 @@ async def list_tickets(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100)
 ):
-    """
-    List tickets with pagination.
-
-    Admins can see all tickets, employees can only see their own.
-    """
+    
     query = select(Ticket)
 
     if not current_user.is_admin:
@@ -73,6 +69,29 @@ async def update_ticket_endpoint(
     ticket = await update_ticket(db, ticket_id, ticket_in, current_user)
     return ticket
 
+@router.get("/{ticket_id}", response_model=TicketResponse)
+async def get_ticket(
+    ticket_id: int,
+    db: DatabaseSession,
+    current_user: CurrentUser
+):
+    """Get ticket by ID."""
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
+
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ticket not found"
+        )
+
+    if not current_user.is_admin and ticket.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this ticket"
+        )
+
+    return ticket
 
 @router.post("/{ticket_id}/approve", response_model=TicketResponse)
 async def approve_ticket_endpoint(

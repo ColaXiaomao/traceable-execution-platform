@@ -41,7 +41,7 @@ const onSubmit = async () => {
 };
 
 onMounted(() =>
-  getTickets().then(res => (tickets.value = res.data.filter(t => t.status === "approved")))
+  getTickets({ page_size: 100 }).then(res => (tickets.value = res.data.data.filter(t => t.status === "approved")))
 );
 </script>
 

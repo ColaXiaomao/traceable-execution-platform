@@ -2,14 +2,15 @@
 
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 
-from backend.app.schemas.run import RunCreate, RunResponse, RunDetailResponse
+from backend.app.schemas.run import RunCreate, RunResponse, RunDetailResponse, PaginatedRunResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser
 from backend.app.services.run_service import create_run
 from backend.app.services.runner import run_executor
 from backend.app.models.run import Run
 # 新增
-from backend.app.schemas.run import RunCreate, RunResponse, RunDetailResponse, PaginatedRunResponse
 from fastapi import Query
+from sqlalchemy import select, func
+from backend.app.models.ticket import Ticket
 
 
 router = APIRouter(prefix="/runs", tags=["Runs"])
@@ -50,28 +51,31 @@ async def list_runs(
 
     Optionally filter by ticket_id.
     """
-    query = db.query(Run)
+    query = select(Run)
 
     if ticket_id:
-        query = query.filter(Run.ticket_id == ticket_id)
+        query = query.where(Run.ticket_id == ticket_id)
 
     if not current_user.is_admin:
-        from backend.app.models.ticket import Ticket
-        query = query.join(Ticket).filter(Ticket.created_by_id == current_user.id)
+        query = query.join(Ticket).where(Ticket.created_by_id == current_user.id)
 
-    total = query.count()
-    runs = query.order_by(Run.created_at.desc()) \
-                .offset((page - 1) * page_size) \
-                .limit(page_size) \
-                .all()
+    count_result = await db.execute(select(func.count()).select_from(query.subquery()))
+    total = count_result.scalar()
 
+    result = await db.execute(
+        query.order_by(Run.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+    )
+    runs = result.scalars().all()
     return {
-        "data": runs,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size
-    }
+    "data": runs,
+    "total": total,
+    "page": page,
+    "page_size": page_size,
+    "total_pages": (total + page_size - 1) // page_size
+}
+
 
 
 @router.get("/{run_id}", response_model=RunDetailResponse)
@@ -83,7 +87,8 @@ async def get_run(
     """
     Get run details including logs.
     """
-    run = db.query(Run).filter(Run.id == run_id).first()
+    result = await db.execute(select(Run).where(Run.id == run_id))
+    run = result.scalar_one_or_none()
 
     if not run:
         raise HTTPException(
@@ -93,7 +98,10 @@ async def get_run(
 
     # Check permissions
     if not current_user.is_admin:
-        if run.ticket.created_by_id != current_user.id:
+        from backend.app.models.ticket import Ticket
+        ticket_result = await db.execute(select(Ticket).where(Ticket.id == run.ticket_id))
+        ticket = ticket_result.scalar_one_or_none()
+        if ticket.created_by_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this run"

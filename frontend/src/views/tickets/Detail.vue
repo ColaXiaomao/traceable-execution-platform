@@ -86,7 +86,7 @@ const handleApprove = async () => {
 // 页面挂载时同时拉取工单详情和资产列表
 onMounted(() => {
   fetchTicket();
-  getAssets().then(res => (assets.value = res.data));
+  getAssets().then(res => (assets.value = res.data.data));
 });
 </script>
 

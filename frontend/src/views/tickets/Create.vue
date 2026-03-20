@@ -39,7 +39,7 @@ const onSubmit = async () => {
 };
 
 // 页面加载时拉取资产列表，填充下拉选项
-onMounted(() => getAssets().then(res => (assets.value = res.data)));
+onMounted(() => getAssets().then(res => (assets.value = res.data.data)));
 </script>
 
 <template>
