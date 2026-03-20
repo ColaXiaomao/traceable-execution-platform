@@ -18,12 +18,9 @@ const pageSize = ref(10);
 const fetchRuns = async () => {
   loading.value = true;
   try {
-    const skip = (currentPage.value - 1) * pageSize.value;
-    const res = await getRuns({ skip, limit: pageSize.value });
-    runs.value = res.data;
-    total.value = res.data.length < pageSize.value
-      ? skip + res.data.length
-      : skip + res.data.length + 1;
+    const res = await getRuns({ page: currentPage.value, page_size: pageSize.value });
+    runs.value = res.data.data;   // 取数组
+    total.value = res.data.total; // 直接用后端返回的总数
   } catch {
     ElMessage.error("获取运行记录失败");
   } finally {

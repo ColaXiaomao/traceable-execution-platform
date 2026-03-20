@@ -3,13 +3,21 @@ import type { Ticket } from "@/types/ticket";
 
 // 查询参数类型
 interface GetTicketsParams {
-  skip?: number;  // 跳过多少条（用于分页）
-  limit?: number; // 最多返回多少条（用于分页）
+  page?: number;
+  page_size?: number;
+}
+
+interface PaginatedTickets {
+  data: Ticket[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 // 获取工单列表，支持分页
 export const getTickets = (params?: GetTicketsParams) =>
-  request.get<Ticket[]>("/tickets", { params });
+  request.get<PaginatedTickets>("/tickets", { params });
 
 // 根据 ID 获取单个工单详情
 export const getTicket = (id: number) =>

@@ -33,27 +33,19 @@ const pageSize = ref(10);                                     // 每页显示条
 const error = ref(false);                                     // 【新增】请求失败时为 true，显示错误状态
 
 const fetchTickets = async () => {
-  error.value = false;       // 【新增】每次请求前先重置错误状态
+  error.value = false;
   loading.value = true;
   try {
-    // 根据页码计算偏移量，例如第2页、每页10条 → skip=10
-    const skip = (currentPage.value - 1) * pageSize.value;
-    const res = await getTickets({ skip, limit: pageSize.value });
-    tickets.value = res.data;
-    // 后端没有返回总数，用返回条数是否"不足一页"来估算 total
-    // 不足一页 → 说明已经是最后一页了，total 就是当前实际总数
-    // 满一页   → 说明后面可能还有，total 多加 1 让分页器显示"下一页"按钮
-    total.value = res.data.length < pageSize.value
-      ? skip + res.data.length
-      : skip + res.data.length + 1;
+    const res = await getTickets({ page: currentPage.value, page_size: pageSize.value });
+    tickets.value = res.data.data;        // 之前是 res.data
+    total.value = res.data.total;         // 之前是手动估算的
   } catch {
-    error.value = true;      // 【新增】请求失败，切换到错误状态
+    error.value = true;
     ElMessage.error("获取工单列表失败");
   } finally {
-    loading.value = false;   // 无论成功失败都关闭加载动画
+    loading.value = false;
   }
 };
-
 // 切换页码时重新拉取数据
 const handlePageChange = (page: number) => {
   currentPage.value = page;

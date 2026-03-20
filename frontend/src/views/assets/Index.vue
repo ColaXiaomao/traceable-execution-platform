@@ -16,12 +16,9 @@ const pageSize = ref(10);
 const fetchAssets = async () => {
   loading.value = true;
   try {
-    const skip = (currentPage.value - 1) * pageSize.value;
-    const res = await getAssets({ skip, limit: pageSize.value });
-    assets.value = res.data;
-    total.value = res.data.length < pageSize.value
-      ? skip + res.data.length
-      : skip + res.data.length + 1;
+    const res = await getAssets({ page: currentPage.value, page_size: pageSize.value });
+    assets.value = res.data.data;
+    total.value = res.data.total;
   } catch {
     ElMessage.error("获取资产列表失败");
   } finally {

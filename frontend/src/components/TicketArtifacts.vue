@@ -15,12 +15,11 @@ const uploadType = ref("");
 const fetchArtifacts = async () => {
   try {
     const res = await getTicketArtifacts(props.ticketId);
-    artifacts.value = res.data.filter(a => !a.is_deleted);
+    artifacts.value = res.data.data; // 之前是 res.data.filter(a => !a.is_deleted)
   } catch {
     ElMessage.error("获取附件失败");
   }
 };
-
 const handleUpload = async (file: File) => {
   uploading.value = true;
   try {

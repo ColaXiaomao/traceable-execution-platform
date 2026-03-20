@@ -1,9 +1,9 @@
 """Asset management endpoints."""
 
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, HTTPException, status, Query
+from sqlalchemy import select, func
 
-from backend.app.schemas.asset import AssetCreate, AssetUpdate, AssetResponse
+from backend.app.schemas.asset import AssetCreate, AssetUpdate, AssetResponse, PaginatedAssetResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser
 from backend.app.services.asset_service import create_asset, update_asset
 from backend.app.models.asset import Asset
@@ -22,24 +22,38 @@ async def create_new_asset(
     asset = await create_asset(db, asset_in, current_user)
     return asset
 
-
-@router.get("", response_model=list[AssetResponse])
+#修改
+@router.get("", response_model=PaginatedAssetResponse)
 async def list_assets(
     db: DatabaseSession,
     current_user: CurrentUser,
     asset_type: str | None = None,
-    skip: int = 0,
-    limit: int = 100
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100)
 ):
-    """List assets."""
+    """List assets with pagination."""
     query = select(Asset)
 
     if asset_type:
         query = query.where(Asset.asset_type == asset_type)
 
-    result = await db.execute(query.offset(skip).limit(limit))
+    count_result = await db.execute(select(func.count()).select_from(query.subquery()))
+    total = count_result.scalar()
+
+    result = await db.execute(
+        query.order_by(Asset.created_at.desc())
+             .offset((page - 1) * page_size)
+             .limit(page_size)
+    )
     assets = result.scalars().all()
-    return assets
+
+    return {
+        "data": assets,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size
+    }
 
 
 @router.get("/{asset_id}", response_model=AssetResponse)
