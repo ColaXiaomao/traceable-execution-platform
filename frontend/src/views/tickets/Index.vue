@@ -22,6 +22,7 @@ import { TICKET_STATUS_MAP } from "@/types/ticket";           // 状态码 → �
 import { useUserStore } from "@/stores/user";
 import { formatTime } from "@/utils/format";                  // 时间格式化工具
 import StatusTag from "@/components/StatusTag.vue";           // 状态标签组件
+import { useDebounceFn } from "@vueuse/core"                  // 防抖的
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -66,6 +67,10 @@ const fetchTickets = async () => {
     loading.value = false;
   }
 };
+
+// 防抖版本，300ms 内连续触发只执行最后一次
+const debouncedFetch = useDebounceFn(fetchTickets, 300)
+
 // 切换页码时重新拉取数据
 const handlePageChange = (page: number) => {
   currentPage.value = page;
@@ -100,7 +105,7 @@ const handleSortChange = ({ prop, order }: { prop: string; order: string | null 
   sortBy.value = prop || "created_at";
   sortOrder.value = order === "ascending" ? "asc" : "desc";
   currentPage.value = 1;
-  fetchTickets();
+  debouncedFetch()
 };
 
 const handleApprove = async (row: Ticket) => {
