@@ -9,6 +9,9 @@ from backend.app.core.dependencies import DatabaseSession, CurrentUser, CurrentA
 from backend.app.services.ticket_service import create_ticket, approve_ticket, update_ticket
 from backend.app.models.ticket import Ticket
 
+import json
+from backend.app.core.dependencies import DatabaseSession, CurrentUser, CurrentAdmin, RedisClient
+
 
 router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
@@ -17,10 +20,15 @@ router = APIRouter(prefix="/tickets", tags=["Tickets"])
 async def create_new_ticket(
     ticket_in: TicketCreate,
     db: DatabaseSession,
-    current_user: CurrentUser
+    current_user: CurrentUser,
+    redis: RedisClient 
 ):
     """Create a new ticket."""
     ticket = await create_ticket(db, ticket_in, current_user)
+    # 创建工单时清除该用户的工单列表缓存
+    if redis:
+        async for key in redis.scan_iter(f"tickets:{current_user.id}:*"):
+            await redis.delete(key)
     return ticket
 
 
@@ -29,6 +37,7 @@ async def create_new_ticket(
 async def list_tickets(
     db: DatabaseSession,
     current_user: CurrentUser,
+    redis: RedisClient,  
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
      # ↓ 新增四个筛选参数
@@ -40,7 +49,15 @@ async def list_tickets(
     order_by: str = Query(default="created_at"),         # 【新增】
     order: str = Query(default="desc")                   # 【新增】
 ):
-    
+        # 【新增】缓存 key，包含所有查询参数
+    cache_key = f"tickets:{current_user.id}:{page}:{page_size}:{keyword}:{status}:{asset_id}:{start_date}:{end_date}:{order_by}:{order}"
+
+    # 【新增】有缓存直接返回
+    if redis:
+        cached = await redis.get(cache_key)
+        if cached:
+            return json.loads(cached)
+        
     query = select(Ticket)
 
     if not current_user.is_admin:
@@ -70,14 +87,19 @@ async def list_tickets(
              .limit(page_size)
     )
     tickets = result.scalars().all()
-
-    return {
-        "data": tickets,
+    # 构建响应并存入缓存
+    response = {
+        "data": [TicketResponse.model_validate(t).model_dump(mode="json") for t in tickets],
         "total": total,
         "page": page,
         "page_size": page_size,
         "total_pages": (total + page_size - 1) // page_size
     }
+
+    if redis:
+        await redis.set(cache_key, json.dumps(response), ex=60)
+
+    return response
 
 
 @router.patch("/{ticket_id}", response_model=TicketResponse)
@@ -119,7 +141,8 @@ async def get_ticket(
 async def approve_ticket_endpoint(
     ticket_id: int,
     db: DatabaseSession,
-    current_admin: CurrentAdmin
+    current_admin: CurrentAdmin,
+    redis: RedisClient 
 ):
     """
     Approve a ticket (admin only).
@@ -127,5 +150,9 @@ async def approve_ticket_endpoint(
     Required for action runs.
     """
     ticket = await approve_ticket(db, ticket_id, current_admin)
+    # 审批工单时清除所有用户的工单列表缓存（审批影响所有人看到的状态）
+    if redis:
+        async for key in redis.scan_iter("tickets:*"):
+            await redis.delete(key)
     return ticket
 
