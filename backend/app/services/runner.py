@@ -74,7 +74,7 @@ class RunExecutor:
         # Get associated artifacts
         result = await db.execute(
             select(Artifact).where(
-                Artifact.run_id == run.id,
+                Artifact.ticket_id == run.ticket_id,
                 Artifact.is_deleted == False
             )
         )
