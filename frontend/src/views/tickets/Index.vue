@@ -31,14 +31,29 @@ const total = ref(0);                                         // 总条数（用
 const currentPage = ref(1);                                   // 当前页码
 const pageSize = ref(10);                                     // 每页显示条数
 const error = ref(false);                                     // 【新增】请求失败时为 true，显示错误状态
+const keyword = ref("");                                      // 【新增】搜索筛选条件
+const filterStatus = ref("");
+const filterAssetId = ref<number | undefined>(undefined);
+const dateRange = ref<[Date, Date] | null>(null);
 
 const fetchTickets = async () => {
   error.value = false;
   loading.value = true;
   try {
-    const res = await getTickets({ page: currentPage.value, page_size: pageSize.value });
+    const res = await getTickets({ 
+      page: currentPage.value, 
+      page_size: pageSize.value,
+      keyword: keyword.value || undefined,           
+      status: filterStatus.value || undefined,      
+      asset_id: filterAssetId.value, 
+      start_date: dateRange.value?.[0]?.toISOString(),
+      end_date: dateRange.value?.[1]?.toISOString()
+     });
     tickets.value = res.data.data;        // 之前是 res.data
     total.value = res.data.total;         // 之前是手动估算的
+    
+
+    
   } catch {
     error.value = true;
     ElMessage.error("获取工单列表失败");
@@ -55,6 +70,22 @@ const handlePageChange = (page: number) => {
 // 切换每页条数时，重置到第一页再拉取
 const handleSizeChange = (size: number) => {
   pageSize.value = size;
+  currentPage.value = 1;
+  fetchTickets();
+};
+
+// 【新增】点搜索按钮时重置到第一页再拉取
+const handleSearch = () => {
+  currentPage.value = 1;
+  fetchTickets();
+};
+
+// 【新增】重置所有筛选条件
+const handleReset = () => {
+  keyword.value = "";
+  filterStatus.value = "";
+  filterAssetId.value = undefined;
+  dateRange.value = null;
   currentPage.value = 1;
   fetchTickets();
 };
@@ -93,6 +124,40 @@ onMounted(fetchTickets);
       <h2>工单列表</h2>
       <el-button type="primary" @click="router.push('/tickets/create')">+ 创建工单</el-button>
     </div>
+
+<!-- 【新增】搜索筛选栏 -->
+  <div class="search-bar">
+    <el-input
+      v-model="keyword"
+      placeholder="搜索工单标题"
+      style="width:200px"
+      clearable
+      @keyup.enter="handleSearch"
+    />
+    <el-select
+      v-model="filterStatus"
+      placeholder="状态筛选"
+      style="width:150px"
+      clearable
+    >
+      <el-option
+        v-for="(label, value) in TICKET_STATUS_MAP"
+        :key="value"
+        :label="label"
+        :value="value"
+      />
+    </el-select>
+    <el-date-picker
+      v-model="dateRange"
+      type="daterange"
+      range-separator="至"
+      start-placeholder="开始日期"
+      end-placeholder="结束日期"
+      style="width:280px"
+    />
+    <el-button type="primary" @click="handleSearch">搜索</el-button>
+    <el-button @click="handleReset">重置</el-button>
+  </div>
 
     <!-- 【新增】错误状态：请求失败时显示，提供重试入口 -->
     <div v-if="error">
@@ -167,5 +232,12 @@ onMounted(fetchTickets);
   margin-top: 20px;          /* 和上方表格保持 20px 间距 */
   display: flex;             /* 开启 flex 布局 */
   justify-content: flex-end; /* 让分页器靠右对齐 */
+}
+.search-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 </style>

@@ -3,6 +3,9 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from sqlalchemy import select, func
 
+from datetime import datetime
+from sqlalchemy import select, func, text
+
 from backend.app.schemas.ticket import TicketCreate, TicketUpdate, TicketResponse, TicketApprove, PaginatedTicketResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser, CurrentAdmin
 from backend.app.services.ticket_service import create_ticket, approve_ticket, update_ticket
@@ -29,13 +32,30 @@ async def list_tickets(
     db: DatabaseSession,
     current_user: CurrentUser,
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100)
+    page_size: int = Query(default=20, ge=1, le=100),
+     # ↓ 新增四个筛选参数
+    keyword: str | None = Query(default=None),           # 标题关键词
+    status: str | None = Query(default=None),            # 状态筛选
+    asset_id: int | None = Query(default=None),          # 资产筛选
+    start_date: datetime | None = Query(default=None),   # 开始时间
+    end_date: datetime | None = Query(default=None)      # 结束时间
 ):
     
     query = select(Ticket)
 
     if not current_user.is_admin:
         query = query.where(Ticket.created_by_id == current_user.id)
+
+    if keyword:
+        query = query.where(Ticket.title.ilike(f"%{keyword}%"))
+    if status:
+        query = query.where(Ticket.status == status)
+    if asset_id:
+        query = query.where(Ticket.asset_id == asset_id)
+    if start_date:
+        query = query.where(Ticket.created_at >= start_date)
+    if end_date:
+        query = query.where(Ticket.created_at <= end_date) 
 
     # 总数
     count_result = await db.execute(select(func.count()).select_from(query.subquery()))
