@@ -5,6 +5,13 @@ import type { Ticket } from "@/types/ticket";
 interface GetTicketsParams {
   page?: number;
   page_size?: number;
+  keyword?: string;       // 【新增】
+  status?: string;        // 【新增】
+  asset_id?: number;      // 【新增】
+  start_date?: string;    // 【新增】
+  end_date?: string;      // 【新增】
+  order_by?: string;    // 【新增】排序字段
+  order?: "asc" | "desc"; // 【新增】排序方向
 }
 
 interface PaginatedTickets {
@@ -15,15 +22,8 @@ interface PaginatedTickets {
   total_pages: number;
 }
 
-interface GetTicketsParams {
-  page?: number;
-  page_size?: number;
-  keyword?: string;       // 【新增】
-  status?: string;        // 【新增】
-  asset_id?: number;      // 【新增】
-  start_date?: string;    // 【新增】
-  end_date?: string;      // 【新增】
-}
+
+
 
 // 获取工单列表，支持分页
 export const getTickets = (params?: GetTicketsParams) =>

@@ -1,10 +1,8 @@
 """Ticket management endpoints."""
 
 from fastapi import APIRouter, HTTPException, status, Query
-from sqlalchemy import select, func
-
+from sqlalchemy import select, func, text, asc, desc
 from datetime import datetime
-from sqlalchemy import select, func, text
 
 from backend.app.schemas.ticket import TicketCreate, TicketUpdate, TicketResponse, TicketApprove, PaginatedTicketResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser, CurrentAdmin
@@ -38,7 +36,9 @@ async def list_tickets(
     status: str | None = Query(default=None),            # 状态筛选
     asset_id: int | None = Query(default=None),          # 资产筛选
     start_date: datetime | None = Query(default=None),   # 开始时间
-    end_date: datetime | None = Query(default=None)      # 结束时间
+    end_date: datetime | None = Query(default=None),     # 结束时间
+    order_by: str = Query(default="created_at"),         # 【新增】
+    order: str = Query(default="desc")                   # 【新增】
 ):
     
     query = select(Ticket)
@@ -62,8 +62,10 @@ async def list_tickets(
     total = count_result.scalar()
 
     # 分页数据
+    sort_column = getattr(Ticket, order_by, Ticket.created_at)
+    sort_func = desc(sort_column) if order == "desc" else asc(sort_column)
     result = await db.execute(
-        query.order_by(Ticket.created_at.desc())
+        query.order_by(sort_func)
              .offset((page - 1) * page_size)
              .limit(page_size)
     )

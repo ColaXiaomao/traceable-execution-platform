@@ -35,6 +35,8 @@ const keyword = ref("");                                      // 【新增】搜
 const filterStatus = ref("");
 const filterAssetId = ref<number | undefined>(undefined);
 const dateRange = ref<[Date, Date] | null>(null);
+const sortBy = ref("created_at");
+const sortOrder = ref<"asc" | "desc">("desc");                               // 【新增】排序状态
 
 const fetchTickets = async () => {
   error.value = false;
@@ -47,8 +49,11 @@ const fetchTickets = async () => {
       status: filterStatus.value || undefined,      
       asset_id: filterAssetId.value, 
       start_date: dateRange.value?.[0]?.toISOString(),
-      end_date: dateRange.value?.[1]?.toISOString()
-     });
+      end_date: dateRange.value?.[1]?.toISOString(),
+      order_by: sortBy.value,                        
+      order: sortOrder.value                            
+
+    });
     tickets.value = res.data.data;        // 之前是 res.data
     total.value = res.data.total;         // 之前是手动估算的
     
@@ -86,6 +91,14 @@ const handleReset = () => {
   filterStatus.value = "";
   filterAssetId.value = undefined;
   dateRange.value = null;
+  currentPage.value = 1;
+  fetchTickets();
+};
+
+// 【新增】表格排序变化时重新请求后端
+const handleSortChange = ({ prop, order }: { prop: string; order: string | null }) => {
+  sortBy.value = prop || "created_at";
+  sortOrder.value = order === "ascending" ? "asc" : "desc";
   currentPage.value = 1;
   fetchTickets();
 };
@@ -174,7 +187,7 @@ onMounted(fetchTickets);
 
     <!-- 工单表格，loading 时显示加载动画 -->
     <!-- 【修改】原来直接渲染表格，现在加了 v-else，只在有数据时显示 -->
-    <el-table v-else :data="tickets" v-loading="loading" border stripe>
+    <el-table v-else :data="tickets" v-loading="loading" border stripe @sort-change="handleSortChange">
       <el-table-column prop="id" label="ID" width="70" sortable />
       <el-table-column prop="title" label="标题" min-width="150" />
       <!-- show-overflow-tooltip：内容过长时悬浮显示完整文本 -->
