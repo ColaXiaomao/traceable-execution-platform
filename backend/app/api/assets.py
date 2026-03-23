@@ -7,7 +7,7 @@ from backend.app.schemas.asset import AssetCreate, AssetUpdate, AssetResponse, P
 from backend.app.core.dependencies import DatabaseSession, CurrentUser
 from backend.app.services.asset_service import create_asset, update_asset
 from backend.app.models.asset import Asset
-
+from backend.app.core.pagination import apply_pagination_and_sort, build_paginated_response
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
@@ -29,7 +29,9 @@ async def list_assets(
     current_user: CurrentUser,
     asset_type: str | None = None,
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100)
+    page_size: int = Query(default=20, ge=1, le=100),
+    order_by: str = Query(default="created_at"),  # 【新增】
+    order: str = Query(default="desc")            # 【新增】
 ):
     """List assets with pagination."""
     query = select(Asset)
@@ -41,19 +43,11 @@ async def list_assets(
     total = count_result.scalar()
 
     result = await db.execute(
-        query.order_by(Asset.created_at.desc())
-             .offset((page - 1) * page_size)
-             .limit(page_size)
+        apply_pagination_and_sort(query, Asset, page, page_size, order_by, order)
     )
     assets = result.scalars().all()
 
-    return {
-        "data": assets,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size
-    }
+    return build_paginated_response(assets, AssetResponse, total, page, page_size)
 
 
 @router.get("/{asset_id}", response_model=AssetResponse)

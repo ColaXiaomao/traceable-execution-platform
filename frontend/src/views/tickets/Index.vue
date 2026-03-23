@@ -22,22 +22,18 @@ import { TICKET_STATUS_MAP } from "@/types/ticket";           // 状态码 → �
 import { useUserStore } from "@/stores/user";
 import { formatTime } from "@/utils/format";                  // 时间格式化工具
 import StatusTag from "@/components/StatusTag.vue";           // 状态标签组件
-import { useDebounceFn } from "@vueuse/core"                  // 防抖的
+import { useTableQuery } from "@/composables/useTableQuery";  // 【新增】
 
 const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);                                   // 控制表格加载动画
 const tickets = ref<Ticket[]>([]);                            // 当前页的工单数据
-const total = ref(0);                                         // 总条数（用于分页器）
-const currentPage = ref(1);                                   // 当前页码
-const pageSize = ref(10);                                     // 每页显示条数
 const error = ref(false);                                     // 【新增】请求失败时为 true，显示错误状态
+
 const keyword = ref("");                                      // 【新增】搜索筛选条件
 const filterStatus = ref("");
 const filterAssetId = ref<number | undefined>(undefined);
 const dateRange = ref<[Date, Date] | null>(null);
-const sortBy = ref("created_at");
-const sortOrder = ref<"asc" | "desc">("desc");                               // 【新增】排序状态
 
 const fetchTickets = async () => {
   error.value = false;
@@ -53,12 +49,9 @@ const fetchTickets = async () => {
       end_date: dateRange.value?.[1]?.toISOString(),
       order_by: sortBy.value,                        
       order: sortOrder.value                            
-
     });
     tickets.value = res.data.data;        // 之前是 res.data
     total.value = res.data.total;         // 之前是手动估算的
-    
-
     
   } catch {
     error.value = true;
@@ -68,21 +61,17 @@ const fetchTickets = async () => {
   }
 };
 
-// 防抖版本，300ms 内连续触发只执行最后一次
-const debouncedFetch = useDebounceFn(fetchTickets, 300)
-
-// 切换页码时重新拉取数据
-const handlePageChange = (page: number) => {
-  currentPage.value = page;
-  fetchTickets();
-};
-
-// 切换每页条数时，重置到第一页再拉取
-const handleSizeChange = (size: number) => {
-  pageSize.value = size;
-  currentPage.value = 1;
-  fetchTickets();
-};
+// 从 composable 里取分页和排序
+const {
+  currentPage,
+  pageSize,
+  total,
+  sortBy,
+  sortOrder,
+  handlePageChange,
+  handleSizeChange,
+  handleSortChange
+} = useTableQuery(fetchTickets)  // ← fetchTickets 在下面定义，先声明再传入
 
 // 【新增】点搜索按钮时重置到第一页再拉取
 const handleSearch = () => {
@@ -98,14 +87,6 @@ const handleReset = () => {
   dateRange.value = null;
   currentPage.value = 1;
   fetchTickets();
-};
-
-// 【新增】表格排序变化时重新请求后端
-const handleSortChange = ({ prop, order }: { prop: string; order: string | null }) => {
-  sortBy.value = prop || "created_at";
-  sortOrder.value = order === "ascending" ? "asc" : "desc";
-  currentPage.value = 1;
-  debouncedFetch()
 };
 
 const handleApprove = async (row: Ticket) => {
@@ -193,22 +174,22 @@ onMounted(fetchTickets);
     <!-- 工单表格，loading 时显示加载动画 -->
     <!-- 【修改】原来直接渲染表格，现在加了 v-else，只在有数据时显示 -->
     <el-table v-else :data="tickets" v-loading="loading" border stripe @sort-change="handleSortChange">
-      <el-table-column prop="id" label="ID" width="70" sortable />
+      <el-table-column prop="id" label="ID" width="70" sortable="custom" />
       <el-table-column prop="title" label="标题" min-width="150" />
       <!-- show-overflow-tooltip：内容过长时悬浮显示完整文本 -->
       <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
 
       <!-- 状态列：用 StatusTag 组件渲染带颜色的状态标签 -->
-      <el-table-column prop="status" label="状态" width="100" sortable>
+      <el-table-column prop="status" label="状态" width="100" sortable="custom">
         <template #default="{ row }">
           <StatusTag :status="row.status" :status-map="TICKET_STATUS_MAP" />
         </template>
       </el-table-column>
 
-      <el-table-column prop="created_by_id" label="提交人" width="100" sortable />
+      <el-table-column prop="created_by_id" label="提交人" width="100" sortable="custom" />
 
       <!-- 时间列：用 formatTime 工具函数格式化时间戳 -->
-      <el-table-column prop="created_at" label="创建时间" width="180" sortable>
+      <el-table-column prop="created_at" label="创建时间" width="180" sortable="custom">
         <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
       </el-table-column>
 

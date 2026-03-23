@@ -7,20 +7,23 @@ import type { Run } from "@/types/run";
 import { RUN_STATUS_MAP } from "@/types/run";
 import { formatTime } from "@/utils/format";
 import StatusTag from "@/components/StatusTag.vue";
+import { useTableQuery } from "@/composables/useTableQuery";
 
 const router = useRouter();
 const loading = ref(false);
 const runs = ref<Run[]>([]);
-const total = ref(0);
-const currentPage = ref(1);
-const pageSize = ref(10);
 
 const fetchRuns = async () => {
   loading.value = true;
   try {
-    const res = await getRuns({ page: currentPage.value, page_size: pageSize.value });
-    runs.value = res.data.data;   // 取数组
-    total.value = res.data.total; // 直接用后端返回的总数
+    const res = await getRuns({
+      page: currentPage.value,
+      page_size: pageSize.value,
+      order_by: sortBy.value,    // 【新增】
+      order: sortOrder.value     // 【新增】
+    });
+    runs.value = res.data.data;
+    total.value = res.data.total;
   } catch {
     ElMessage.error("获取运行记录失败");
   } finally {
@@ -28,16 +31,16 @@ const fetchRuns = async () => {
   }
 };
 
-const handlePageChange = (page: number) => {
-  currentPage.value = page;
-  fetchRuns();
-};
-
-const handleSizeChange = (size: number) => {
-  pageSize.value = size;
-  currentPage.value = 1;
-  fetchRuns();
-};
+const {
+  currentPage,
+  pageSize,
+  total,
+  sortBy,
+  sortOrder,
+  handlePageChange,
+  handleSizeChange,
+  handleSortChange  // 【新增】
+} = useTableQuery(fetchRuns)
 
 onMounted(fetchRuns);
 </script>
@@ -49,12 +52,12 @@ onMounted(fetchRuns);
       <el-button v-if="true" type="primary" @click="router.push('/runs/create')">+ 创建运行</el-button>
     </div>
 
-    <el-table :data="runs" v-loading="loading" border stripe>
-      <el-table-column prop="id" label="ID" width="70" sortable />
-      <el-table-column prop="ticket_id" label="工单ID" width="100" sortable />
-      <el-table-column prop="run_type" label="类型" width="100" sortable />
+    <el-table :data="runs" v-loading="loading" border stripe @sort-change="handleSortChange">
+      <el-table-column prop="id" label="ID" width="70" sortable="custom" />
+      <el-table-column prop="ticket_id" label="工单ID" width="100" sortable="custom" />
+      <el-table-column prop="run_type" label="类型" width="100" sortable="custom" />
       <el-table-column prop="script_id" label="脚本ID" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="status" label="状态" width="100" sortable>
+      <el-table-column prop="status" label="状态" width="100" sortable="custom">
         <template #default="{ row }">
           <StatusTag :status="row.status" :status-map="RUN_STATUS_MAP" />
         </template>

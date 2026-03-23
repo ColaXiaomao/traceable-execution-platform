@@ -5,6 +5,8 @@ interface GetAssetsParams {
   page?: number;
   page_size?: number;
   asset_type?: string;
+  order_by?: string;       
+  order?: "asc" | "desc";
 }
 
 interface PaginatedAssets {

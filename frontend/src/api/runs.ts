@@ -6,6 +6,8 @@ interface GetRunsParams {
   page?: number;      // 当前页码
   page_size?: number; // 每页条数
   ticket_id?: number; // 按工单 ID 筛选（可选）
+  order_by?: string;       // 【新增】
+  order?: "asc" | "desc"; // 【新增】
 }
 
 // 创建 Run 时需要传入的数据类型

@@ -1,14 +1,14 @@
 """Ticket management endpoints."""
 
 from fastapi import APIRouter, HTTPException, status, Query
-from sqlalchemy import select, func, text, asc, desc
+from sqlalchemy import select, func, text
 from datetime import datetime
 
 from backend.app.schemas.ticket import TicketCreate, TicketUpdate, TicketResponse, TicketApprove, PaginatedTicketResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser, CurrentAdmin
 from backend.app.services.ticket_service import create_ticket, approve_ticket, update_ticket
 from backend.app.models.ticket import Ticket
-
+from backend.app.core.pagination import apply_pagination_and_sort, build_paginated_response
 import json
 from backend.app.core.dependencies import DatabaseSession, CurrentUser, CurrentAdmin, RedisClient
 
@@ -79,22 +79,11 @@ async def list_tickets(
     total = count_result.scalar()
 
     # 分页数据
-    sort_column = getattr(Ticket, order_by, Ticket.created_at)
-    sort_func = desc(sort_column) if order == "desc" else asc(sort_column)
     result = await db.execute(
-        query.order_by(sort_func)
-             .offset((page - 1) * page_size)
-             .limit(page_size)
-    )
+        apply_pagination_and_sort(query, Ticket, page, page_size, order_by, order))
     tickets = result.scalars().all()
-    # 构建响应并存入缓存
-    response = {
-        "data": [TicketResponse.model_validate(t).model_dump(mode="json") for t in tickets],
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size
-    }
+
+    response = build_paginated_response(tickets, TicketResponse, total, page, page_size)
 
     if redis:
         await redis.set(cache_key, json.dumps(response), ex=60)

@@ -5,18 +5,21 @@ import { ElMessage } from "element-plus";
 import { getAssets } from "@/api/assets";
 import type { Asset } from "@/types/asset";
 import { formatTime } from "@/utils/format";
+import { useTableQuery } from "@/composables/useTableQuery"; 
 
 const router = useRouter();
 const loading = ref(false);
 const assets = ref<Asset[]>([]);
-const total = ref(0);
-const currentPage = ref(1);
-const pageSize = ref(10);
 
 const fetchAssets = async () => {
   loading.value = true;
   try {
-    const res = await getAssets({ page: currentPage.value, page_size: pageSize.value });
+    const res = await getAssets({
+      page: currentPage.value,
+      page_size: pageSize.value,
+      order_by: sortBy.value,    // 【新增】
+      order: sortOrder.value     // 【新增】
+    });
     assets.value = res.data.data;
     total.value = res.data.total;
   } catch {
@@ -26,16 +29,17 @@ const fetchAssets = async () => {
   }
 };
 
-const handlePageChange = (page: number) => {
-  currentPage.value = page;
-  fetchAssets();
-};
+const {
+  currentPage,
+  pageSize,
+  total,
+  sortBy,
+  sortOrder,
+  handlePageChange,
+  handleSizeChange,
+  handleSortChange   // 【新增】
+} = useTableQuery(fetchAssets)
 
-const handleSizeChange = (size: number) => {
-  pageSize.value = size;
-  currentPage.value = 1;
-  fetchAssets();
-};
 
 onMounted(fetchAssets);
 </script>
@@ -47,14 +51,14 @@ onMounted(fetchAssets);
       <el-button type="primary" @click="router.push('/assets/create')">+ 创建资产</el-button>
     </div>
 
-    <el-table :data="assets" v-loading="loading" border stripe>
-      <el-table-column prop="id" label="ID" width="70" sortable />
-      <el-table-column prop="name" label="名称" min-width="150" sortable />
-      <el-table-column prop="asset_type" label="类型" width="120" sortable />
-      <el-table-column prop="serial_number" label="序列号" width="150" sortable />
-      <el-table-column prop="location" label="位置" width="150" sortable />
+    <el-table :data="assets" v-loading="loading" border stripe @sort-change="handleSortChange">
+      <el-table-column prop="id" label="ID" width="70" sortable="custom" />
+      <el-table-column prop="name" label="名称" min-width="150" sortable="custom" />
+      <el-table-column prop="asset_type" label="类型" width="120" sortable="custom" />
+      <el-table-column prop="serial_number" label="序列号" width="150" sortable="custom" />
+      <el-table-column prop="location" label="位置" width="150" sortable="custom" />
       <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="created_at" label="创建时间" width="180" sortable>
+      <el-table-column prop="created_at" label="创建时间" width="180" sortable="custom">
         <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="100" fixed="right">

@@ -2,11 +2,14 @@
 
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 
+from backend.app.core.pagination import apply_pagination_and_sort, build_paginated_response
 from backend.app.schemas.run import RunCreate, RunResponse, RunDetailResponse, PaginatedRunResponse
 from backend.app.core.dependencies import DatabaseSession, CurrentUser
 from backend.app.services.run_service import create_run
 from backend.app.services.runner import run_executor
 from backend.app.models.run import Run
+
+
 # 新增
 from fastapi import Query
 from sqlalchemy import select, func
@@ -44,7 +47,9 @@ async def list_runs(
     current_user: CurrentUser,
     ticket_id: int | None = None,
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100)
+    page_size: int = Query(default=20, ge=1, le=100),
+    order_by: str = Query(default="created_at"),  # 【新增】
+    order: str = Query(default="desc")            # 【新增】
 ):
     """
     List runs with pagination.
@@ -63,18 +68,10 @@ async def list_runs(
     total = count_result.scalar()
 
     result = await db.execute(
-        query.order_by(Run.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+        apply_pagination_and_sort(query, Run, page, page_size, order_by, order)
     )
     runs = result.scalars().all()
-    return {
-    "data": runs,
-    "total": total,
-    "page": page,
-    "page_size": page_size,
-    "total_pages": (total + page_size - 1) // page_size
-}
+    return build_paginated_response(runs, RunResponse, total, page, page_size)
 
 
 
