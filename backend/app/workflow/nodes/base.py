@@ -59,10 +59,15 @@ class BaseNode(ABC, Generic[NodeDataT]):
         node_id: str,
         node_data: NodeDataT,
         variable_pool: VariablePool,
+        context: dict[str, Any] | None = None,
     ) -> None:
         self.node_id = node_id
         self.node_data = node_data          # 静态 config，类型由 NodeDataT 保证
         self.variable_pool = variable_pool  # 运行时共享状态
+        # context 用于注入节点执行时需要的外部依赖（db session、artifact_store 等）。
+        # Dify 通过依赖注入框架（Flask/FastAPI DI）在节点内部直接拿，
+        # 我们显式传入，调用链更清晰，方便测试时 mock。
+        self.context: dict[str, Any] = context or {}
 
     async def run(self) -> NodeRunResult:
         """Template Method：公共流程在这里，子类专注 _run()。

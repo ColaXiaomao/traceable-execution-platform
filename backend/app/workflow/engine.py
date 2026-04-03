@@ -118,6 +118,7 @@ class WorkflowEngine:
         definition: WorkflowDefinition,
         user_inputs: dict[str, Any],
         system_variables: dict[str, Any] | None = None,
+        node_context: dict[str, Any] | None = None,
     ) -> WorkflowRunResult:
         """执行一个 workflow。
 
@@ -140,7 +141,7 @@ class WorkflowEngine:
         # 按序执行每个节点
         end_result: NodeRunResult | None = None
         for node_def in ordered_nodes:
-            node = _build_node(node_def, pool)
+            node = _build_node(node_def, pool, node_context)
             result = await node.run()
 
             if result.status == RunStatus.FAILED:
@@ -183,6 +184,17 @@ def _topological_sort(definition: WorkflowDefinition) -> list[NodeDefinition]:
         in_degree[edge.target] += 1
 
     # 入度为 0 的节点先入队（通常只有 StartNode）
+    #
+    # 注意：这里的 queue 只是 Kahn 算法内部用于"已处理完前驱、等待排序"的临时队列，
+    # 和 Dify 源码里的 ready_queue 概念不同。
+    #
+    # Dify 的 ready_queue 是运行时（runtime）动态调度队列：
+    # 并行分支执行时，某个节点的所有前驱节点都跑完之后，才把它放入 ready_queue，
+    # 由调度循环取出并用 asyncio.gather 并发执行。
+    #
+    # 我们是线性复现，没有并行分支：拓扑排序在所有节点执行之前一次性完成，
+    # 执行顺序固定为一个列表，engine.run() 直接 for 循环依次 await 即可。
+    # 所以根本不需要运行时 ready_queue，拓扑排序本身已经代替了它的全部作用。
     queue = [nid for nid, deg in in_degree.items() if deg == 0]
     ordered: list[NodeDefinition] = []
 
@@ -200,7 +212,7 @@ def _topological_sort(definition: WorkflowDefinition) -> list[NodeDefinition]:
     return ordered
 
 
-def _build_node(node_def: NodeDefinition, pool: VariablePool) -> BaseNode:
+def _build_node(node_def: NodeDefinition, pool: VariablePool, context: dict[str, Any] | None = None) -> BaseNode:
     """根据节点定义实例化对应的节点类。
 
     核心步骤：
@@ -220,7 +232,7 @@ def _build_node(node_def: NodeDefinition, pool: VariablePool) -> BaseNode:
     data_cls = _extract_node_data_cls(node_cls)
     node_data = data_cls(**node_def.data)
 
-    return node_cls(node_id=node_def.id, node_data=node_data, variable_pool=pool)
+    return node_cls(node_id=node_def.id, node_data=node_data, variable_pool=pool, context=context)
 
 
 def _extract_node_data_cls(node_cls: type[BaseNode]) -> type[BaseModel]:
