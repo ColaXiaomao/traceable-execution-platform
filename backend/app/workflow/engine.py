@@ -5,6 +5,8 @@ from typing import Any, get_args
 from pydantic import BaseModel, Field
 
 from .nodes.base import BaseNode, NodeRunResult, RunStatus
+from .nodes.artifact_loader import ArtifactLoaderNode
+from .nodes.artifact_saver import ArtifactSaverNode
 from .nodes.end import EndNode
 from .nodes.llm_node import LLMNode
 from .nodes.start import StartNode
@@ -90,6 +92,8 @@ _NODE_REGISTRY: dict[NodeType, type[BaseNode]] = {
     NodeType.START: StartNode,
     NodeType.END: EndNode,
     NodeType.LLM: LLMNode,
+    NodeType.ARTIFACT_LOADER: ArtifactLoaderNode,
+    NodeType.ARTIFACT_SAVER: ArtifactSaverNode,
 }
 
 
