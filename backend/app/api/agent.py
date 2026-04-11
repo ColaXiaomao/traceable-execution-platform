@@ -87,12 +87,14 @@ TOOLS = [
 # ── Tool implementations ───────────────────────────────────────────────────
 
 def _get_current_date() -> str:
+# 本地计算（CPU），没有 I/O，同步就可以了。
     now = datetime.now()
     weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
     return f"{now.year}年{now.month}月{now.day}日，{weekdays[now.weekday()]}"
 
 
 async def _get_weather(city: str) -> str:
+# 这里发生了 HTTP 请求（外部 API） ，需要等待返回，所以需要异步。
     try:
         async with httpx.AsyncClient(timeout=8.0, trust_env=False) as client:
             resp = await client.get(
@@ -197,10 +199,10 @@ async def fortune_chat(req: FortuneRequest):
                         yield _sse({"type": "text", "content": msg.get("content", "")})
                         break
 
-                    for tc in tool_calls:
-                        fn = tc["function"]
-                        name = fn["name"]
-                        args = json.loads(fn.get("arguments", "{}"))
+                    for tool_call in tool_calls:
+                        function_call = tool_call["function"]
+                        name = function_call["name"]
+                        args = json.loads(function_call.get("arguments", "{}"))
 
                         yield _sse({"type": "tool_start", "tool": name, "args": args})
                         result = await _execute_tool(name, args)
@@ -208,7 +210,7 @@ async def fortune_chat(req: FortuneRequest):
 
                         messages.append({
                             "role": "tool",
-                            "tool_call_id": tc["id"],
+                            "tool_call_id": tool_call["id"],
                             "content": result,
                         })
 
@@ -439,9 +441,6 @@ function sendMessage() {
   document.getElementById('sendBtn').disabled = true;
   input.value = '';
 
-  const es = new EventSource('/api/v1/agent/fortune?' + new URLSearchParams(), {});
-
-  // 用 fetch + ReadableStream 代替 EventSource（支持 POST）
   fetch('/api/v1/agent/fortune', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -451,7 +450,7 @@ function sendMessage() {
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
-    let answerEl = null;
+    const toolEls = {};  // 本次请求私有的元素引用，不跨对话共享
 
     while (true) {
       const { done, value } = await reader.read();
@@ -468,7 +467,6 @@ function sendMessage() {
         if (event.type === 'tool_start') {
           const el = document.createElement('div');
           el.className = 'step calling';
-          el.id = 'tool-' + event.tool;
           el.innerHTML = `
             <div class="step-icon">${TOOL_ICONS[event.tool] || '⚙️'}</div>
             <div class="step-body">
@@ -479,10 +477,11 @@ function sendMessage() {
               </div>
             </div>`;
           box.appendChild(el);
+          toolEls[event.tool] = el;  // 存到本次请求的局部 map
         }
 
         if (event.type === 'tool_result') {
-          const el = document.getElementById('tool-' + event.tool);
+          const el = toolEls[event.tool];  // 从局部 map 取，不会找到旧对话的元素
           if (el) {
             el.className = 'step result';
             el.querySelector('.step-label').textContent = '✓ ' + (TOOL_NAMES[event.tool] || event.tool);
