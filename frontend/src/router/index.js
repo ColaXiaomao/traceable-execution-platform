@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '@/views/LoginView.vue'
+import RegisterView from '@/views/RegisterView.vue'
 import HomeView from '@/views/HomeView.vue'
 
 const router = createRouter({
@@ -9,6 +10,12 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+      meta: { requiresAuth: false },
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: RegisterView,
       meta: { requiresAuth: false },
     },
     {
@@ -26,8 +33,8 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !token) {
     return { name: 'login' }
   }
-  // 已登录时访问 /login，跳转到首页
-  if (to.name === 'login' && token) {
+  // 已登录时访问 /login 或 /register，跳转到首页
+  if ((to.name === 'login' || to.name === 'register') && token) {
     return { name: 'home' }
   }
 })

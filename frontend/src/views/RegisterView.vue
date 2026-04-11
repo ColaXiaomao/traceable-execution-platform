@@ -4,25 +4,32 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 
 const router = useRouter()
-const { login } = useAuth()
+const { register } = useAuth()
 
 const username = ref('')
+const email = ref('')
+const fullName = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const errorMsg = ref('')
 const loading = ref(false)
 
-async function handleLogin() {
-  if (!username.value || !password.value) {
-    errorMsg.value = '请输入用户名和密码'
+async function handleRegister() {
+  if (!username.value || !email.value || !password.value) {
+    errorMsg.value = '请填写用户名、邮箱和密码'
+    return
+  }
+  if (password.value !== confirmPassword.value) {
+    errorMsg.value = '两次输入的密码不一致'
     return
   }
   loading.value = true
   errorMsg.value = ''
   try {
-    await login(username.value, password.value)
+    await register(username.value, email.value, password.value, fullName.value)
     router.push('/')
   } catch (e) {
-    errorMsg.value = e.message || '登录失败'
+    errorMsg.value = e.message || '注册失败'
   } finally {
     loading.value = false
   }
@@ -30,14 +37,14 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="login-page">
-    <div class="login-card">
+  <div class="register-page">
+    <div class="register-card">
       <h1 class="title">Traceable Execution Platform</h1>
-      <p class="subtitle">请登录以继续</p>
+      <p class="subtitle">创建账号以开始使用</p>
 
-      <form @submit.prevent="handleLogin" class="form">
+      <form @submit.prevent="handleRegister" class="form">
         <div class="field">
-          <label for="username">用户名</label>
+          <label for="username">用户名 <span class="required">*</span></label>
           <input
             id="username"
             v-model="username"
@@ -49,13 +56,49 @@ async function handleLogin() {
         </div>
 
         <div class="field">
-          <label for="password">密码</label>
+          <label for="email">邮箱 <span class="required">*</span></label>
+          <input
+            id="email"
+            v-model="email"
+            type="email"
+            placeholder="输入邮箱地址"
+            autocomplete="email"
+            :disabled="loading"
+          />
+        </div>
+
+        <div class="field">
+          <label for="fullName">姓名（可选）</label>
+          <input
+            id="fullName"
+            v-model="fullName"
+            type="text"
+            placeholder="输入真实姓名"
+            autocomplete="name"
+            :disabled="loading"
+          />
+        </div>
+
+        <div class="field">
+          <label for="password">密码 <span class="required">*</span></label>
           <input
             id="password"
             v-model="password"
             type="password"
             placeholder="输入密码"
-            autocomplete="current-password"
+            autocomplete="new-password"
+            :disabled="loading"
+          />
+        </div>
+
+        <div class="field">
+          <label for="confirmPassword">确认密码 <span class="required">*</span></label>
+          <input
+            id="confirmPassword"
+            v-model="confirmPassword"
+            type="password"
+            placeholder="再次输入密码"
+            autocomplete="new-password"
             :disabled="loading"
           />
         </div>
@@ -63,20 +106,20 @@ async function handleLogin() {
         <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
 
         <button type="submit" :disabled="loading">
-          {{ loading ? '登录中...' : '登录' }}
+          {{ loading ? '注册中...' : '注册' }}
         </button>
       </form>
 
       <p class="switch-link">
-        没有账号？
-        <router-link to="/register">去注册</router-link>
+        已有账号？
+        <router-link to="/login">去登录</router-link>
       </p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.login-page {
+.register-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -84,7 +127,7 @@ async function handleLogin() {
   background: #f4f6f9;
 }
 
-.login-card {
+.register-card {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
@@ -122,6 +165,10 @@ async function handleLogin() {
   font-size: 13px;
   font-weight: 500;
   color: #444;
+}
+
+.required {
+  color: #e53935;
 }
 
 .field input {
