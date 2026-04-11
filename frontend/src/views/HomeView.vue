@@ -29,6 +29,13 @@ function handleLogout() {
             <span class="card-desc">基于 AI 的命理分析与运势预测</span>
           </div>
         </a>
+        <a href="/api/v1/agent1/stock/demo" class="app-card">
+          <div class="card-icon">📈</div>
+          <div class="card-info">
+            <span class="card-title">AI 量化先知</span>
+            <span class="card-desc">实时 A 股行情 · 短期走势预测</span>
+          </div>
+        </a>
       </div>
     </main>
   </div>
