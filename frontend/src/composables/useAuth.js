@@ -22,11 +22,17 @@ export function useAuth() {
     user.value = await authApi.me()
   }
 
+  async function register(username, email, password, fullName) {
+    await authApi.register(username, email, password, fullName)
+    // 注册成功后自动登录
+    await login(username, password)
+  }
+
   function logout() {
     token.value = null
     user.value = null
     localStorage.removeItem('access_token')
   }
 
-  return { token, user, isLoggedIn, login, logout }
+  return { token, user, isLoggedIn, login, logout, register }
 }

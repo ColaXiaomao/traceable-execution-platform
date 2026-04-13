@@ -21,7 +21,22 @@ function handleLogout() {
       </div>
     </header>
     <main class="content">
-      <p>欢迎，已登录</p>
+      <div class="card-grid">
+        <a href="/api/v1/agent/fortune/demo" class="app-card">
+          <div class="card-icon">🔮</div>
+          <div class="card-info">
+            <span class="card-title">AI 算命师</span>
+            <span class="card-desc">基于 AI 的命理分析与运势预测</span>
+          </div>
+        </a>
+        <a href="/api/v1/agent1/stock/demo" class="app-card">
+          <div class="card-icon">📈</div>
+          <div class="card-info">
+            <span class="card-title">AI 量化先知</span>
+            <span class="card-desc">实时 A 股行情 · 短期走势预测</span>
+          </div>
+        </a>
+      </div>
     </main>
   </div>
 </template>
@@ -76,7 +91,55 @@ function handleLogout() {
 
 .content {
   padding: 40px 32px;
-  font-size: 15px;
-  color: #666;
+}
+
+.card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.app-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 560px;
+  padding: 48px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.app-card:hover {
+  box-shadow: 0 6px 24px rgba(79, 110, 247, 0.15);
+  transform: translateY(-2px);
+}
+
+.card-icon {
+  font-size: 72px;
+  line-height: 1;
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.card-desc {
+  font-size: 14px;
+  color: #888;
 }
 </style>
