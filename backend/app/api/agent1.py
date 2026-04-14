@@ -201,26 +201,71 @@ async def stock_chat(req: StockRequest):
         got_text = False
         try:
             async with httpx.AsyncClient(timeout=120.0, trust_env=False) as client:
-                for _ in range(8):
-                    resp = await client.post(
-                        OLLAMA_URL,
-                        json={"model": MODEL, "messages": messages, "tools": TOOLS, "stream": False},
-                    )
-                    resp.raise_for_status()
-                    choice = resp.json()["choices"][0]
-                    msg = choice["message"]
-                    messages.append(msg)
 
-                    tool_calls = msg.get("tool_calls") or []
-                    if not tool_calls:
-                        yield _sse({"type": "text", "content": msg.get("content", "")})
-                        got_text = True
+                for _ in range(8):
+                    tool_calls_acc: dict[int, dict] = {}
+                    payload = {"model": MODEL, "messages": messages, "tools": TOOLS, "stream": True}
+
+                    async with client.stream("POST", OLLAMA_URL, json=payload) as resp:
+                        resp.raise_for_status()
+                        async for line in resp.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            data = line[6:]
+                            if data.strip() == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+
+                            delta = chunk.get("choices", [{}])[0].get("delta", {})
+
+                            content = delta.get("content") or ""
+                            if content:
+                                got_text = True
+                                yield _sse({"type": "text_chunk", "content": content})
+
+                            for tc in delta.get("tool_calls") or []:
+                                idx = tc.get("index", 0)
+                                if idx not in tool_calls_acc:
+                                    tool_calls_acc[idx] = {"id": "", "name": "", "arguments": ""}
+                                if tc.get("id"):
+                                    tool_calls_acc[idx]["id"] = tc["id"]
+                                fn = tc.get("function", {})
+                                if fn.get("name"):
+                                    tool_calls_acc[idx]["name"] += fn["name"]
+                                if fn.get("arguments"):
+                                    tool_calls_acc[idx]["arguments"] += fn["arguments"]
+
+                    if not tool_calls_acc:
+                        # 文本已流式推送完毕
                         break
 
-                    for tool_call in tool_calls:
-                        function_call = tool_call["function"]
-                        name = function_call["name"]
-                        args = json.loads(function_call.get("arguments", "{}"))
+                    tool_calls_list = [
+                        {
+                            "id": tool_calls_acc[i]["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tool_calls_acc[i]["name"],
+                                "arguments": tool_calls_acc[i]["arguments"],
+                            },
+                        }
+                        for i in sorted(tool_calls_acc)
+                    ]
+
+                    messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": tool_calls_list,
+                    })
+
+                    for tc in tool_calls_list:
+                        name = tc["function"]["name"]
+                        try:
+                            args = json.loads(tc["function"]["arguments"])
+                        except json.JSONDecodeError:
+                            args = {}
 
                         yield _sse({"type": "tool_start", "tool": name, "args": args})
                         result = await _execute_tool(name, args)
@@ -228,20 +273,31 @@ async def stock_chat(req: StockRequest):
 
                         messages.append({
                             "role": "tool",
-                            "tool_call_id": tool_call["id"],
+                            "tool_call_id": tc["id"],
                             "content": result,
                         })
 
-                # 工具调用完毕但 LLM 没有生成最终文字，强制不带 tools 再请求一次
+                # 工具调用完毕但 LLM 没有生成最终文字，强制不带 tools 再请求一次（流式）
                 if not got_text:
                     messages.append({"role": "user", "content": "请根据以上所有工具返回的数据，生成完整的分析报告。"})
-                    resp = await client.post(
-                        OLLAMA_URL,
-                        json={"model": MODEL, "messages": messages, "stream": False},
-                    )
-                    resp.raise_for_status()
-                    final_msg = resp.json()["choices"][0]["message"]
-                    yield _sse({"type": "text", "content": final_msg.get("content", "")})
+                    async with client.stream(
+                        "POST", OLLAMA_URL,
+                        json={"model": MODEL, "messages": messages, "stream": True},
+                    ) as resp:
+                        resp.raise_for_status()
+                        async for line in resp.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            data = line[6:]
+                            if data.strip() == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+                            content = chunk.get("choices", [{}])[0].get("delta", {}).get("content") or ""
+                            if content:
+                                yield _sse({"type": "text_chunk", "content": content})
 
         except Exception as exc:
             yield _sse({"type": "error", "content": str(exc)})
@@ -471,6 +527,7 @@ function sendMessage() {
     const decoder = new TextDecoder();
     let buf = '';
     const toolEls = {};
+    let answerEl = null; // 流式文本容器，首个 text_chunk 时创建
 
     while (true) {
       const { done, value } = await reader.read();
@@ -509,11 +566,13 @@ function sendMessage() {
           }
         }
 
-        if (event.type === 'text') {
-          const answerEl = document.createElement('div');
-          answerEl.className = 'answer';
-          answerEl.textContent = event.content;
-          box.appendChild(answerEl);
+        if (event.type === 'text_chunk') {
+          if (!answerEl) {
+            answerEl = document.createElement('div');
+            answerEl.className = 'answer';
+            box.appendChild(answerEl);
+          }
+          answerEl.textContent += event.content;
         }
 
         if (event.type === 'error') {

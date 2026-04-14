@@ -184,25 +184,74 @@ async def fortune_chat(req: FortuneRequest):
         try:
             async with httpx.AsyncClient(timeout=120.0, trust_env=False) as client:
                 for _ in range(6):  # 最多 6 轮工具调用，防止死循环
-                    resp = await client.post(
-                        OLLAMA_URL,
-                        json={"model": MODEL, "messages": messages, "tools": TOOLS, "stream": False},
-                    )
-                    resp.raise_for_status()
-                    choice = resp.json()["choices"][0]
-                    msg = choice["message"]
-                    messages.append(msg)
+                    # 始终用流式请求：文本 chunk 实时推送，tool_calls 片段累积后处理
+                    tool_calls_acc: dict[int, dict] = {}  # index → {id, name, arguments}
 
-                    tool_calls = msg.get("tool_calls") or []
-                    if not tool_calls:
-                        # LLM 决定不再调工具，输出最终答案
-                        yield _sse({"type": "text", "content": msg.get("content", "")})
+                    async with client.stream(
+                        "POST", OLLAMA_URL,
+                        json={"model": MODEL, "messages": messages, "tools": TOOLS, "stream": True},
+                    ) as resp:
+                        resp.raise_for_status()
+                        async for line in resp.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            data = line[6:]
+                            if data.strip() == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+
+                            delta = chunk.get("choices", [{}])[0].get("delta", {})
+
+                            # 文本 chunk：立即推送给前端
+                            content = delta.get("content") or ""
+                            if content:
+                                yield _sse({"type": "text_chunk", "content": content})
+
+                            # tool_calls chunk：按 index 累积
+                            for tc in delta.get("tool_calls") or []:
+                                idx = tc.get("index", 0)
+                                if idx not in tool_calls_acc:
+                                    tool_calls_acc[idx] = {"id": "", "name": "", "arguments": ""}
+                                if tc.get("id"):
+                                    tool_calls_acc[idx]["id"] = tc["id"]
+                                fn = tc.get("function", {})
+                                if fn.get("name"):
+                                    tool_calls_acc[idx]["name"] += fn["name"]
+                                if fn.get("arguments"):
+                                    tool_calls_acc[idx]["arguments"] += fn["arguments"]
+
+                    if not tool_calls_acc:
+                        # 没有工具调用，文本已逐 chunk 推送完毕
                         break
 
-                    for tool_call in tool_calls:
-                        function_call = tool_call["function"]
-                        name = function_call["name"]
-                        args = json.loads(function_call.get("arguments", "{}"))
+                    # 组装完整 tool_calls 列表
+                    tool_calls_list = [
+                        {
+                            "id": tool_calls_acc[i]["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tool_calls_acc[i]["name"],
+                                "arguments": tool_calls_acc[i]["arguments"],
+                            },
+                        }
+                        for i in sorted(tool_calls_acc)
+                    ]
+
+                    messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": tool_calls_list,
+                    })
+
+                    for tc in tool_calls_list:
+                        name = tc["function"]["name"]
+                        try:
+                            args = json.loads(tc["function"]["arguments"])
+                        except json.JSONDecodeError:
+                            args = {}
 
                         yield _sse({"type": "tool_start", "tool": name, "args": args})
                         result = await _execute_tool(name, args)
@@ -210,7 +259,7 @@ async def fortune_chat(req: FortuneRequest):
 
                         messages.append({
                             "role": "tool",
-                            "tool_call_id": tool_call["id"],
+                            "tool_call_id": tc["id"],
                             "content": result,
                         })
 
@@ -451,6 +500,7 @@ function sendMessage() {
     const decoder = new TextDecoder();
     let buf = '';
     const toolEls = {};  // 本次请求私有的元素引用，不跨对话共享
+    let answerEl = null; // 流式文本容器，首个 text_chunk 时创建
 
     while (true) {
       const { done, value } = await reader.read();
@@ -489,11 +539,13 @@ function sendMessage() {
           }
         }
 
-        if (event.type === 'text') {
-          answerEl = document.createElement('div');
-          answerEl.className = 'answer';
-          answerEl.textContent = event.content;
-          box.appendChild(answerEl);
+        if (event.type === 'text_chunk') {
+          if (!answerEl) {
+            answerEl = document.createElement('div');
+            answerEl.className = 'answer';
+            box.appendChild(answerEl);
+          }
+          answerEl.textContent += event.content;
         }
 
         if (event.type === 'error') {
