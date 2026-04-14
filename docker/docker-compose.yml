@@ -109,6 +109,14 @@ services:
     container_name: traceable-backend
     ports:
       - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      # 这是一个 向下兼容 Linux 的写法。 不影响Mac Windows。
+      # Linux 服务器上 host.docker.internal 默认不存在，需要手动映射到宿主机网关 IP。
+      # host-gateway 是 Docker 20.10+ 的特殊值，会自动解析为宿主机的 docker0 网桥 IP。
+      # Mac / Windows 默认支持 host.docker.internal 。
+      # 例子： 用了这个，requests.get("http://host.docker.internal:11434")
+      #       在linux上就可以访问宿主机上的 11434 服务（比如 Ollama）。
 
     # 把根目录 .env 注入容器
     env_file:
