@@ -82,6 +82,9 @@ async def search_tickets(
             )
 
         result = await db.execute(query.order_by(Ticket.created_at.desc()).limit(limit))
+        # 上面 query = select(Ticket) 和 两个 query.where 都是在 动态拼 SQL语句， 直到这里才真正发请求到数据库。
+        # order_by(Ticket.created_at.desc()) 相当于 ORDER BY created_at DESC ， 按创建时间倒序（最新的在前） 。
+        # .limit(limit) 相当于 LIMIT 10 ， 限制返回条数为10条。
         tickets = result.scalars().all()
 
         if not tickets:
