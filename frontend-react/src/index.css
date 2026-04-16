@@ -521,3 +521,100 @@ button {
 .link:hover {
   text-decoration: underline;
 }
+
+/* ── 首页（系统选择）─────────────────────────────────────────────────────── */
+
+.home-page {
+  padding: 40px 0;
+}
+
+.home-page__greeting {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.home-page__subtitle {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 32px;
+}
+
+.home-page__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.system-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 320px;
+  padding: 32px 28px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.system-card:hover {
+  box-shadow: 0 6px 20px rgba(79, 110, 247, 0.15);
+  transform: translateY(-2px);
+}
+
+.system-card__icon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.system-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.system-card__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.system-card__desc {
+  font-size: 13px;
+  color: #888;
+}
+
+/* ── 详情网格（工单/资产详情页）─────────────────────────────────────────── */
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #888;
+}
+
+/* LLM 分析结果展示框 */
+.analysis-result {
+  background: #f8f9ff;
+  border: 1px solid #e0e7ff;
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  margin-bottom: 16px;
+  color: #333;
+}
