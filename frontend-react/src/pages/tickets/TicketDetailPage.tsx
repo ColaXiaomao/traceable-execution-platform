@@ -47,12 +47,19 @@ export default function TicketDetailPage() {
   useEffect(() => {
     if (isNew) return
     const ticketId = Number(id)
-    Promise.all([
-      ticketsApi.get(ticketId),
-      artifactsApi.listByTicket(ticketId),
-      runsApi.list(ticketId),
-    ])
-      .then(([t, a, r]) => { setTicket(t); setArtifacts(a); setRuns(r) })
+    // 先加载工单主体，再并行加载附件和运行记录
+    // 附件/运行记录失败不影响工单基本信息展示
+    ticketsApi.get(ticketId)
+      .then(t => {
+        setTicket(t)
+        // 附件和运行记录单独请求，失败只记录错误不影响主体
+        artifactsApi.listByTicket(ticketId)
+          .then(a => setArtifacts(a))
+          .catch(() => {})
+        runsApi.list(ticketId)
+          .then(r => setRuns(r))
+          .catch(() => {})
+      })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [id, isNew])
@@ -152,6 +159,7 @@ export default function TicketDetailPage() {
   // ── 详情模式 ──────────────────────────────────────────────────────────────
 
   if (loading) return <Spin size="large" style={{ display: 'block', marginTop: 80, textAlign: 'center' }} />
+  if (error && !ticket) return <Alert message="加载失败" description={error} type="error" showIcon style={{ margin: 24 }} />
   if (!ticket) return null
 
   const artifactColumns: ColumnsType<Artifact> = [
