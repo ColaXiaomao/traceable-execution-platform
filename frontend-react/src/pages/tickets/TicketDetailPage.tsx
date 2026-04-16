@@ -1,71 +1,66 @@
-// 工单详情页，同时兼任创建页（路由 /tickets/new）。
-// 包含：工单信息、附件上传/列表、执行记录、LLM 分析触发、管理员审批。
+// 工单详情/创建页，使用 Ant Design 重写。
+// id === 'new' 时为创建模式，否则为详情模式。
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import {
+  Button, Form, Input, Card, Table, Tag, Typography,
+  Space, Upload, Spin, Alert, Descriptions, Divider,
+} from 'antd'
+import { UploadOutlined, RobotOutlined } from '@ant-design/icons'
+import type { ColumnsType } from 'antd/es/table'
 import { ticketsApi, artifactsApi, runsApi, workflowsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import type { Ticket, Artifact, Run, TicketStatus, TicketCreate } from '../../types'
+
+const { Title, Text } = Typography
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
   draft: '草稿', submitted: '待审批', approved: '已审批',
   running: '执行中', done: '已完成', failed: '失败', closed: '已关闭',
 }
 
+const STATUS_COLOR: Record<TicketStatus, string> = {
+  draft: 'default', submitted: 'blue', approved: 'green',
+  running: 'orange', done: 'green', failed: 'red', closed: 'default',
+}
+
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [form] = Form.useForm<TicketCreate>()
 
-  // id === 'new' 时为创建模式，否则为详情模式
   const isNew = id === 'new'
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [runs, setRuns] = useState<Run[]>([])
   const [loading, setLoading] = useState(!isNew)
-  const [error, setError] = useState('')
-
-  // 创建表单状态
-  const [form, setForm] = useState<TicketCreate>({ title: '', description: '' })
   const [submitting, setSubmitting] = useState(false)
-
-  // 附件上传
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
-
-  // LLM 分析
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 加载工单详情及其关联数据
   useEffect(() => {
     if (isNew) return
-
     const ticketId = Number(id)
-    setLoading(true)
-
-    // 并行请求工单信息、附件列表、执行记录，减少等待时间
     Promise.all([
       ticketsApi.get(ticketId),
       artifactsApi.listByTicket(ticketId),
       runsApi.list(ticketId),
     ])
-      .then(([t, a, r]) => {
-        setTicket(t)
-        setArtifacts(a)
-        setRuns(r)
-      })
+      .then(([t, a, r]) => { setTicket(t); setArtifacts(a); setRuns(r) })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [id, isNew])
 
-  // 创建新工单
-  async function handleCreate() {
-    if (!form.title.trim()) return
+  async function handleCreate(values: TicketCreate) {
     setSubmitting(true)
     try {
-      const created = await ticketsApi.create(form)
+      const created = await ticketsApi.create(values)
       navigate(`/tickets/${created.id}`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '创建失败')
@@ -74,26 +69,21 @@ export default function TicketDetailPage() {
     }
   }
 
-  // 上传附件
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !ticket) return
-
     setUploading(true)
     try {
       const res = await artifactsApi.upload(ticket.id, file)
-      // 上传成功后把新附件追加到列表，不需要重新拉整个列表
       setArtifacts(prev => [...prev, res.artifact])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '上传失败')
     } finally {
       setUploading(false)
-      // 清空 input，允许重复上传同名文件
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
-  // 触发 LLM 分析（使用第一个附件）
   async function handleAnalyze() {
     if (!ticket || artifacts.length === 0) return
     setAnalyzing(true)
@@ -108,7 +98,6 @@ export default function TicketDetailPage() {
     }
   }
 
-  // 审批工单（仅管理员）
   async function handleApprove() {
     if (!ticket) return
     try {
@@ -119,7 +108,6 @@ export default function TicketDetailPage() {
     }
   }
 
-  // 创建执行记录
   async function handleCreateRun(runType: 'proof' | 'action') {
     if (!ticket) return
     try {
@@ -130,263 +118,158 @@ export default function TicketDetailPage() {
     }
   }
 
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleString('zh-CN')
-  }
-
-  // ── 创建模式 ────────────────────────────────────────────────────────────
+  // ── 创建模式 ──────────────────────────────────────────────────────────────
 
   if (isNew) {
     return (
       <div>
-        <div className="page-header">
-          <h2 className="page-title">创建工单</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Title level={4} style={{ margin: 0 }}>创建工单</Title>
+          <Button onClick={() => navigate('/tickets')}>返回列表</Button>
         </div>
 
-        <div className="card">
-          <div className="card__body">
-            <div className="form">
-              <div className="form-field">
-                <label>标题 <span className="required">*</span></label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="输入工单标题"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>描述</label>
-                <textarea
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="输入工单描述（可选）"
-                />
-              </div>
-
-              {error && <p className="form-error">{error}</p>}
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  className="btn btn--primary"
-                  onClick={handleCreate}
-                  disabled={submitting || !form.title.trim()}
-                >
-                  {submitting ? '提交中...' : '创建工单'}
-                </button>
-                <button
-                  className="btn btn--secondary"
-                  onClick={() => navigate('/tickets')}
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Card>
+          {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+          <Form form={form} layout="vertical" onFinish={handleCreate} style={{ maxWidth: 600 }}>
+            <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+              <Input placeholder="输入工单标题" />
+            </Form.Item>
+            <Form.Item name="description" label="描述">
+              <Input.TextArea rows={4} placeholder="输入工单描述（可选）" />
+            </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" loading={submitting}>创建工单</Button>
+                <Button onClick={() => navigate('/tickets')}>取消</Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Card>
       </div>
     )
   }
 
-  // ── 详情模式 ────────────────────────────────────────────────────────────
+  // ── 详情模式 ──────────────────────────────────────────────────────────────
 
-  if (loading) return <div className="loading">加载中...</div>
-  if (error && !ticket) return <div className="form-error">{error}</div>
+  if (loading) return <Spin size="large" style={{ display: 'block', marginTop: 80, textAlign: 'center' }} />
   if (!ticket) return null
+
+  const artifactColumns: ColumnsType<Artifact> = [
+    { title: '文件名', dataIndex: 'filename' },
+    { title: '类型', dataIndex: 'artifact_type', render: v => v || '—' },
+    { title: '大小', dataIndex: 'size_bytes', render: (v: number) => `${(v / 1024).toFixed(1)} KB` },
+    { title: '上传时间', dataIndex: 'created_at', render: (v: string) => new Date(v).toLocaleString('zh-CN') },
+    {
+      title: '操作',
+      render: (_, a) => (
+        <Button type="link" href={artifactsApi.downloadUrl(a.id)} target="_blank">下载</Button>
+      ),
+    },
+  ]
+
+  const runColumns: ColumnsType<Run> = [
+    { title: 'ID', dataIndex: 'id', width: 80, render: v => `#${v}` },
+    {
+      title: '类型', dataIndex: 'run_type', width: 100,
+      render: (v: string) => <Tag color={v === 'proof' ? 'purple' : 'volcano'}>{v === 'proof' ? 'Proof' : 'Action'}</Tag>,
+    },
+    {
+      title: '状态', dataIndex: 'status', width: 100,
+      render: (v: string) => <Tag color={v === 'done' ? 'green' : v === 'failed' ? 'red' : 'orange'}>{v}</Tag>,
+    },
+    { title: '创建时间', dataIndex: 'created_at', render: (v: string) => new Date(v).toLocaleString('zh-CN') },
+    {
+      title: '操作',
+      render: (_, run) => (
+        <Button type="link" onClick={() => navigate(`/runs/${run.id}`)}>查看日志</Button>
+      ),
+    },
+  ]
 
   return (
     <div>
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 className="page-title">工单 #{ticket.id}</h2>
-          <span className={`badge badge--${ticket.status}`}>
-            {STATUS_LABEL[ticket.status]}
-          </span>
-        </div>
-        <button className="btn btn--secondary" onClick={() => navigate('/tickets')}>
-          返回列表
-        </button>
+      {/* 页头 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Space>
+          <Title level={4} style={{ margin: 0 }}>工单 #{ticket.id}</Title>
+          <Tag color={STATUS_COLOR[ticket.status]}>{STATUS_LABEL[ticket.status]}</Tag>
+        </Space>
+        <Button onClick={() => navigate('/tickets')}>返回列表</Button>
       </div>
 
-      {error && <p className="form-error" style={{ marginBottom: 12 }}>{error}</p>}
+      {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
 
-      {/* 工单基本信息 */}
-      <div className="card">
-        <div className="card__header">
-          <span className="card__title">基本信息</span>
-          {/* 管理员且状态为 submitted 时显示审批按钮 */}
-          {user?.is_admin && ticket.status === 'submitted' && (
-            <button className="btn btn--success btn--sm" onClick={handleApprove}>
-              审批通过
-            </button>
-          )}
-        </div>
-        <div className="card__body">
-          <div className="detail-grid">
-            <div className="detail-item">
-              <span className="detail-label">标题</span>
-              <span>{ticket.title}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">描述</span>
-              <span>{ticket.description || '—'}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">创建时间</span>
-              <span>{formatDate(ticket.created_at)}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">更新时间</span>
-              <span>{formatDate(ticket.updated_at)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* 基本信息 */}
+      <Card
+        title="基本信息"
+        style={{ marginBottom: 16 }}
+        extra={
+          user?.is_admin && ticket.status === 'submitted' && (
+            <Button type="primary" size="small" onClick={handleApprove}>审批通过</Button>
+          )
+        }
+      >
+        <Descriptions column={2}>
+          <Descriptions.Item label="标题">{ticket.title}</Descriptions.Item>
+          <Descriptions.Item label="描述">{ticket.description || '—'}</Descriptions.Item>
+          <Descriptions.Item label="创建时间">{new Date(ticket.created_at).toLocaleString('zh-CN')}</Descriptions.Item>
+          <Descriptions.Item label="更新时间">{new Date(ticket.updated_at).toLocaleString('zh-CN')}</Descriptions.Item>
+        </Descriptions>
+      </Card>
 
       {/* 附件 */}
-      <div className="card">
-        <div className="card__header">
-          <span className="card__title">附件</span>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {/* 触发 LLM 分析，需要至少一个附件 */}
+      <Card
+        title="附件"
+        style={{ marginBottom: 16 }}
+        extra={
+          <Space>
             {artifacts.length > 0 && (
-              <button
-                className="btn btn--secondary btn--sm"
+              <Button
+                icon={<RobotOutlined />}
+                size="small"
                 onClick={handleAnalyze}
-                disabled={analyzing}
+                loading={analyzing}
               >
-                {analyzing ? '分析中...' : 'LLM 分析'}
-              </button>
+                LLM 分析
+              </Button>
             )}
-            <button
-              className="btn btn--primary btn--sm"
+            <Button
+              icon={<UploadOutlined />}
+              size="small"
+              loading={uploading}
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
             >
-              {uploading ? '上传中...' : '上传附件'}
-            </button>
-            {/* 隐藏的 file input，由按钮触发 */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              style={{ display: 'none' }}
-              onChange={handleUpload}
-            />
-          </div>
-        </div>
-        <div className="card__body">
-          {analysisResult && (
-            <div className="analysis-result">{analysisResult}</div>
-          )}
-          {artifacts.length === 0 ? (
-            <div className="empty">暂无附件</div>
-          ) : (
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>文件名</th>
-                    <th>类型</th>
-                    <th>大小</th>
-                    <th>上传时间</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {artifacts.map(a => (
-                    <tr key={a.id}>
-                      <td>{a.filename}</td>
-                      <td>{a.artifact_type || '—'}</td>
-                      <td>{(a.size_bytes / 1024).toFixed(1)} KB</td>
-                      <td>{formatDate(a.created_at)}</td>
-                      <td>
-                        <a
-                          className="link"
-                          href={artifactsApi.downloadUrl(a.id)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          下载
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
+              上传附件
+            </Button>
+            <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleUpload} />
+          </Space>
+        }
+      >
+        {analysisResult && (
+          <Alert
+            message="LLM 分析结果"
+            description={<pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{analysisResult}</pre>}
+            type="info"
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        <Table rowKey="id" dataSource={artifacts} columns={artifactColumns} pagination={false} size="small" />
+      </Card>
 
       {/* 执行记录 */}
-      <div className="card">
-        <div className="card__header">
-          <span className="card__title">执行记录</span>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              className="btn btn--secondary btn--sm"
-              onClick={() => handleCreateRun('proof')}
-            >
-              + Proof Run
-            </button>
-            {/* ActionRun 需要工单已审批 */}
+      <Card
+        title="执行记录"
+        extra={
+          <Space>
+            <Button size="small" onClick={() => handleCreateRun('proof')}>+ Proof Run</Button>
             {ticket.status === 'approved' && (
-              <button
-                className="btn btn--primary btn--sm"
-                onClick={() => handleCreateRun('action')}
-              >
-                + Action Run
-              </button>
+              <Button type="primary" size="small" onClick={() => handleCreateRun('action')}>+ Action Run</Button>
             )}
-          </div>
-        </div>
-        <div className="card__body">
-          {runs.length === 0 ? (
-            <div className="empty">暂无执行记录</div>
-          ) : (
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>类型</th>
-                    <th>状态</th>
-                    <th>创建时间</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.map(run => (
-                    <tr key={run.id}>
-                      <td>#{run.id}</td>
-                      <td>
-                        <span className={`badge badge--${run.run_type}`}>
-                          {run.run_type === 'proof' ? 'Proof' : 'Action'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge badge--${run.status}`}>
-                          {run.status}
-                        </span>
-                      </td>
-                      <td>{formatDate(run.created_at)}</td>
-                      <td>
-                        <span
-                          className="link"
-                          onClick={() => navigate(`/runs/${run.id}`)}
-                        >
-                          查看日志
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
+          </Space>
+        }
+      >
+        <Table rowKey="id" dataSource={runs} columns={runColumns} pagination={false} size="small" />
+      </Card>
     </div>
   )
 }
